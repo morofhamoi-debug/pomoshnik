@@ -14,42 +14,49 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            height: 100vh;
+            background-image: url('starti .PNG');
+            background-size: cover;
+            background-position: center;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-end;
             align-items: center;
-            background: rgba(0, 0, 0, 0.75);
+            padding-bottom: 50px;
             z-index: 10;
         }
         #start-btn {
-            background: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 220px;
+            height: 120px;
+            background: transparent;
             border: none;
-            padding: 0;
             cursor: pointer;
             transition: transform 0.1s;
         }
-        #start-btn img {
-            width: 280px;
-            filter: drop-shadow(0 5px 15px rgba(0,0,0,0.6));
-        }
         #start-btn:hover {
-            transform: scale(1.05);
+            transform: translate(-50%, -50%) scale(1.05);
         }
         .controls-hint {
             color: white;
-            margin-top: 20px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-            font-size: 18px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
+            font-size: 20px;
+            font-weight: bold;
             text-align: center;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 20px;
+            border-radius: 8px;
         }
     </style>
 </head>
 <body>
     <div id="instructions">
-        <button id="start-btn"><img src="starti .PNG" alt="Старт"></button>
-        <div class="controls-hint">Управление: W, A, S, D — ходить, Мышь — оглядываться.</div>
+        <button id="start-btn"></button>
+        <div class="controls-hint">Управление: W, A, S, D — ходить, Пробел — прыгать, Мышь — оглядываться.</div>
     </div>
 
     <!-- Подключаем Three.js и PointerLockControls для управления от 1-го лица -->
@@ -59,6 +66,7 @@
     <script>
         let scene, camera, renderer, controls;
         let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        let canJump = false;
         let prevTime = performance.now();
         let velocity = new THREE.Vector3();
         let direction = new THREE.Vector3();
@@ -105,13 +113,19 @@
 
             scene.add(controls.object);
 
-            // Обработка клавиатуры
+            // Обработка клавиатуры (включая прыжок на Пробел)
             const onKeyDown = function (event) {
                 switch (event.code) {
                     case 'KeyW': case 'ArrowUp': moveForward = true; break;
                     case 'KeyS': case 'ArrowDown': moveBackward = true; break;
                     case 'KeyA': case 'ArrowLeft': moveLeft = true; break;
                     case 'KeyD': case 'ArrowRight': moveRight = true; break;
+                    case 'Space':
+                        if (canJump === true) {
+                            velocity.y += 7.5; // Сила прыжка
+                            canJump = false;
+                        }
+                        break;
                 }
             };
 
@@ -164,30 +178,28 @@
             floor.receiveShadow = true;
             scene.add(floor);
 
-            // 3. РУКИ ЧЕЛОВЕКА (ruka .WEBP)
+            // 3. РУКИ ЧЕЛОВЕКА (с правильным путем к ruka .WEBP)
             handsGroup = new THREE.Group();
-            const handTexture = textureLoader.load('ruka .WEBP');
+            const handTexture = textureLoader.load('ruka%20.WEBP');
             const handMat = new THREE.MeshBasicMaterial({ map: handTexture, transparent: true });
             
-            const handPlaneGeo = new THREE.PlaneGeometry(0.6, 0.6);
+            const handPlaneGeo = new THREE.PlaneGeometry(0.5, 0.5);
             
             const leftHandMesh = new THREE.Mesh(handPlaneGeo, handMat);
-            leftHandMesh.position.set(-0.3, -0.3, -0.5);
-            leftHandMesh.rotation.y = 0.3;
+            leftHandMesh.position.set(-0.25, -0.3, -0.5);
 
             const rightHandMesh = new THREE.Mesh(handPlaneGeo, handMat);
-            rightHandMesh.position.set(0.3, -0.3, -0.5);
-            rightHandMesh.rotation.y = -0.3;
+            rightHandMesh.position.set(0.25, -0.3, -0.5);
 
             handsGroup.add(leftHandMesh, rightHandMesh);
             camera.add(handsGroup);
 
-            // 4. НОГИ ЧЕЛОВЕКА (noga .WEBP)
+            // 4. НОГИ ЧЕЛОВЕКА (с правильным путем к noga .WEBP)
             legsGroup = new THREE.Group();
-            const legTexture = textureLoader.load('noga .WEBP');
+            const legTexture = textureLoader.load('noga%20.WEBP');
             const legMat = new THREE.MeshBasicMaterial({ map: legTexture, transparent: true });
 
-            const legPlaneGeo = new THREE.PlaneGeometry(0.7, 0.7);
+            const legPlaneGeo = new THREE.PlaneGeometry(0.6, 0.6);
 
             const leftLegMesh = new THREE.Mesh(legPlaneGeo, legMat);
             leftLegMesh.position.set(-0.2, -0.9, -0.5);
@@ -217,6 +229,16 @@
             if (controls.isLocked === true) {
                 velocity.x -= velocity.x * 10.0 * delta;
                 velocity.z -= velocity.z * 10.0 * delta;
+
+                // Гравитация и прыжок
+                velocity.y -= 9.8 * 6.0 * delta;
+                controls.object.position.y += velocity.y * delta;
+
+                if (controls.object.position.y < 1.7) {
+                    velocity.y = 0;
+                    controls.object.position.y = 1.7;
+                    canJump = true;
+                }
 
                 direction.z = Number(moveForward) - Number(moveBackward);
                 direction.x = Number(moveRight) - Number(moveLeft);
