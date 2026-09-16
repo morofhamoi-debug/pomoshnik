@@ -148,9 +148,9 @@
             const sky = new THREE.Mesh(skyGeo, skyMat);
             scene.add(sky);
 
-            // 2. ЗЕМЛЯ И ТРАВА (grass.JPG)
+            // 2. ЗЕМЛЯ И ТРАВА (grass.WEBP)
             const floorGeo = new THREE.PlaneGeometry(300, 300);
-            const grassTexture = textureLoader.load('grass.JPG');
+            const grassTexture = textureLoader.load('grass.WEBP');
             grassTexture.wrapS = THREE.RepeatWrapping;
             grassTexture.wrapT = THREE.RepeatWrapping;
             grassTexture.repeat.set(150, 150);
