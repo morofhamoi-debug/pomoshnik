@@ -24,17 +24,15 @@
             z-index: 10;
         }
         #start-btn {
-            background: linear-gradient(to bottom, #d47a15, #8a3b00);
-            border: 3px solid #ffd700;
-            border-radius: 12px;
-            color: #ffffff;
-            font-size: 24px;
-            font-weight: bold;
-            padding: 15px 50px;
+            background: none;
+            border: none;
+            padding: 0;
             cursor: pointer;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
             transition: transform 0.1s;
+        }
+        #start-btn img {
+            width: 280px;
+            filter: drop-shadow(0 5px 15px rgba(0,0,0,0.6));
         }
         #start-btn:hover {
             transform: scale(1.05);
@@ -50,7 +48,7 @@
 </head>
 <body>
     <div id="instructions">
-        <button id="start-btn">▶ НАЧАТЬ ИГРУ</button>
+        <button id="start-btn"><img src="starti .PNG" alt="Старт"></button>
         <div class="controls-hint">Управление: W, A, S, D — ходить, Мышь — оглядываться.</div>
     </div>
 
@@ -66,7 +64,6 @@
         let direction = new THREE.Vector3();
         let handsGroup, legsGroup;
         let handAnimTime = 0;
-        let grassMesh;
         let clock = new THREE.Clock();
 
         init();
@@ -139,20 +136,21 @@
             sunLight.castShadow = true;
             scene.add(sunLight);
 
-            // 1. НЕБО (Купол с вашей второй картинкой sky.jpg — солнце и облака)
-            const skyGeo = new THREE.SphereGeometry(500, 32, 32);
+            // Загрузчик текстур из репозитория
             const textureLoader = new THREE.TextureLoader();
-            
+
+            // 1. НЕБО (sky.JPG)
+            const skyGeo = new THREE.SphereGeometry(500, 32, 32);
             const skyMat = new THREE.MeshBasicMaterial({
-                map: textureLoader.load('sky.jpg'),
+                map: textureLoader.load('sky.JPG'),
                 side: THREE.BackSide
             });
             const sky = new THREE.Mesh(skyGeo, skyMat);
             scene.add(sky);
 
-            // 2. ЗЕМЛЯ И ТРАВА (с вашей первой картинкой grass.jpg)
+            // 2. ЗЕМЛЯ И ТРАВА (grass.JPG)
             const floorGeo = new THREE.PlaneGeometry(300, 300);
-            const grassTexture = textureLoader.load('grass.jpg');
+            const grassTexture = textureLoader.load('grass.JPG');
             grassTexture.wrapS = THREE.RepeatWrapping;
             grassTexture.wrapT = THREE.RepeatWrapping;
             grassTexture.repeat.set(150, 150);
@@ -166,73 +164,38 @@
             floor.receiveShadow = true;
             scene.add(floor);
 
-            // 3. РУКИ ЧЕЛОВЕКА (с рукавами из image_7.png)
+            // 3. РУКИ ЧЕЛОВЕКА (ruka .WEBP)
             handsGroup = new THREE.Group();
+            const handTexture = textureLoader.load('ruka .WEBP');
+            const handMat = new THREE.MeshBasicMaterial({ map: handTexture, transparent: true });
             
-            const skinMat = new THREE.MeshLambertMaterial({ color: 0xd8a47f }); // Цвет кожи рук
-            const sleeveMat = new THREE.MeshLambertMaterial({ color: 0x111111 }); // Черный рукав с узором
-            const accentMat = new THREE.MeshLambertMaterial({ color: 0xd35400 }); // Оранжевая окантовка
+            const handPlaneGeo = new THREE.PlaneGeometry(0.6, 0.6);
+            
+            const leftHandMesh = new THREE.Mesh(handPlaneGeo, handMat);
+            leftHandMesh.position.set(-0.3, -0.3, -0.5);
+            leftHandMesh.rotation.y = 0.3;
 
-            // Левая рука (рукав + кисть)
-            const leftArmGroup = new THREE.Group();
-            const leftSleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 16), sleeveMat);
-            leftSleeve.rotation.z = -Math.PI / 4;
-            const leftBand = new THREE.Mesh(new THREE.CylinderGeometry(0.061, 0.061, 0.05, 16), accentMat);
-            leftBand.position.set(0, -0.2, 0);
-            leftBand.rotation.z = -Math.PI / 4;
-            const leftHand = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.09, 0.1), skinMat);
-            leftHand.position.set(-0.2, -0.3, 0);
-            leftArmGroup.add(leftSleeve, leftBand, leftHand);
-            leftArmGroup.position.set(-0.3, -0.35, -0.5);
-            handsGroup.add(leftArmGroup);
+            const rightHandMesh = new THREE.Mesh(handPlaneGeo, handMat);
+            rightHandMesh.position.set(0.3, -0.3, -0.5);
+            rightHandMesh.rotation.y = -0.3;
 
-            // Правая рука (рукав + кисть)
-            const rightArmGroup = new THREE.Group();
-            const rightSleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 16), sleeveMat);
-            rightSleeve.rotation.z = Math.PI / 4;
-            const rightBand = new THREE.Mesh(new THREE.CylinderGeometry(0.061, 0.061, 0.05, 16), accentMat);
-            rightBand.position.set(0, -0.2, 0);
-            rightBand.rotation.z = Math.PI / 4;
-            const rightHand = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.09, 0.1), skinMat);
-            rightHand.position.set(0.2, -0.3, 0);
-            rightArmGroup.add(rightSleeve, rightBand, rightHand);
-            rightArmGroup.position.set(0.3, -0.35, -0.5);
-            handsGroup.add(rightArmGroup);
-
+            handsGroup.add(leftHandMesh, rightHandMesh);
             camera.add(handsGroup);
 
-            // 4. НОГИ ЧЕЛОВЕКА (реалистичные босые ноги с пальцами, как на image_8.png)
+            // 4. НОГИ ЧЕЛОВЕКА (noga .WEBP)
             legsGroup = new THREE.Group();
-            
-            function createFoot() {
-                const footGroup = new THREE.Group();
-                const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 16), skinMat);
-                shin.position.set(0, -0.2, 0);
-                
-                const footBase = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.06, 0.22), skinMat);
-                footBase.position.set(0, -0.48, 0.05);
+            const legTexture = textureLoader.load('noga .WEBP');
+            const legMat = new THREE.MeshBasicMaterial({ map: legTexture, transparent: true });
 
-                // Пальцы ног
-                for(let i=0; i<5; i++) {
-                    const toe = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 8), skinMat);
-                    toe.scale.set(0.8, 0.6, 1.5);
-                    toe.position.set(-0.03 + i * 0.015, -0.48, 0.16);
-                    footGroup.add(toe);
-                }
+            const legPlaneGeo = new THREE.PlaneGeometry(0.7, 0.7);
 
-                footGroup.add(shin, footBase);
-                return footGroup;
-            }
+            const leftLegMesh = new THREE.Mesh(legPlaneGeo, legMat);
+            leftLegMesh.position.set(-0.2, -0.9, -0.5);
 
-            const leftFoot = createFoot();
-            leftFoot.position.set(-0.16, -1.0, -0.4);
-            leftFoot.rotation.x = 0.15;
+            const rightLegMesh = new THREE.Mesh(legPlaneGeo, legMat);
+            rightLegMesh.position.set(0.2, -0.9, -0.5);
 
-            const rightFoot = createFoot();
-            rightFoot.position.set(0.16, -1.0, -0.4);
-            rightFoot.rotation.x = -0.15;
-
-            legsGroup.add(leftFoot, rightFoot);
+            legsGroup.add(leftLegMesh, rightLegMesh);
             camera.add(legsGroup);
 
             // Изменение размера окна
@@ -250,7 +213,6 @@
 
             const time = performance.now();
             const delta = (time - prevTime) / 1000;
-            const elapsedTime = clock.getElapsedTime();
 
             if (controls.isLocked === true) {
                 velocity.x -= velocity.x * 10.0 * delta;
@@ -270,15 +232,9 @@
                 if (moveForward || moveBackward || moveLeft || moveRight) {
                     handAnimTime += delta * 12;
                     handsGroup.position.y = Math.sin(handAnimTime) * 0.03;
-                    handsGroup.position.x = Math.cos(handAnimTime * 0.5) * 0.02;
-
-                    // Шагающие движения ног
                     legsGroup.position.y = Math.sin(handAnimTime) * 0.05;
-                    legsGroup.children[0].position.z = -0.4 + Math.sin(handAnimTime) * 0.1;
-                    legsGroup.children[1].position.z = -0.4 - Math.sin(handAnimTime) * 0.1;
                 } else {
                     handsGroup.position.y = THREE.MathUtils.lerp(handsGroup.position.y, 0, 0.1);
-                    handsGroup.position.x = THREE.MathUtils.lerp(handsGroup.position.x, 0, 0.1);
                     legsGroup.position.y = THREE.MathUtils.lerp(legsGroup.position.y, 0, 0.1);
                 }
             }
