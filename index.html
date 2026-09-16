@@ -12,19 +12,47 @@
         }
         #instructions {
             position: absolute;
-            top: 20px;
+            top: 0;
+            left: 0;
             width: 100%;
-            text-align: center;
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-            pointer-events: none;
-            font-size: 18px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.75);
             z-index: 10;
+        }
+        #start-btn {
+            background: linear-gradient(to bottom, #d47a15, #8a3b00);
+            border: 3px solid #ffd700;
+            border-radius: 12px;
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: bold;
+            padding: 15px 50px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            transition: transform 0.1s;
+        }
+        #start-btn:hover {
+            transform: scale(1.05);
+        }
+        .controls-hint {
+            color: white;
+            margin-top: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            font-size: 18px;
+            text-align: center;
         }
     </style>
 </head>
 <body>
-    <div id="instructions">Кликните мышкой по экрану, чтобы начать.<br>Управление: W, A, S, D — ходить, Мышь — оглядываться.</div>
+    <div id="instructions">
+        <button id="start-btn">▶ НАЧАТЬ ИГРУ</button>
+        <div class="controls-hint">Управление: W, A, S, D — ходить, Мышь — оглядываться.</div>
+    </div>
 
     <!-- Подключаем Three.js и PointerLockControls для управления от 1-го лица -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -64,7 +92,9 @@
             controls = new THREE.PointerLockControls(camera, document.body);
             
             const instructions = document.getElementById('instructions');
-            document.body.addEventListener('click', () => {
+            const startBtn = document.getElementById('start-btn');
+
+            startBtn.addEventListener('click', () => {
                 controls.lock();
             });
 
@@ -73,7 +103,7 @@
             });
 
             controls.addEventListener('unlock', () => {
-                instructions.style.display = 'block';
+                instructions.style.display = 'flex';
             });
 
             scene.add(controls.object);
@@ -109,7 +139,7 @@
             sunLight.castShadow = true;
             scene.add(sunLight);
 
-            // 1. НЕБО (Купол с вашей второй картинкой sky.jpg)
+            // 1. НЕБО (Купол с вашей второй картинкой sky.jpg — солнце и облака)
             const skyGeo = new THREE.SphereGeometry(500, 32, 32);
             const textureLoader = new THREE.TextureLoader();
             
@@ -120,76 +150,89 @@
             const sky = new THREE.Mesh(skyGeo, skyMat);
             scene.add(sky);
 
-            // 2. ЗЕМЛЯ И ОБЪЕМНАЯ ТРАВА (детализированные травинки вместо плоской картинки)
+            // 2. ЗЕМЛЯ И ТРАВА (с вашей первой картинкой grass.jpg)
             const floorGeo = new THREE.PlaneGeometry(300, 300);
+            const grassTexture = textureLoader.load('grass.jpg');
+            grassTexture.wrapS = THREE.RepeatWrapping;
+            grassTexture.wrapT = THREE.RepeatWrapping;
+            grassTexture.repeat.set(150, 150);
+
             const floorMat = new THREE.MeshStandardMaterial({
-                color: 0x1b3b0f,
-                roughness: 0.9
+                map: grassTexture,
+                roughness: 0.8
             });
             const floor = new THREE.Mesh(floorGeo, floorMat);
             floor.rotation.x = -Math.PI / 2;
             floor.receiveShadow = true;
             scene.add(floor);
 
-            // Генерация детальных объемных травинок, реагирующих на ходьбу
-            const bladesCount = 35000;
-            const bladeGeometry = new THREE.ConeGeometry(0.035, 0.5, 3);
-            bladeGeometry.translate(0, 0.25, 0);
-
-            const instancedGrass = new THREE.InstancedMesh(
-                bladeGeometry,
-                new THREE.MeshStandardMaterial({ color: 0x38701d, roughness: 0.7 }),
-                bladesCount
-            );
-
-            const dummy = new THREE.Object3D();
-            for (let i = 0; i < bladesCount; i++) {
-                const x = (Math.random() - 0.5) * 120;
-                const z = (Math.random() - 0.5) * 120;
-                dummy.position.set(x, 0, z);
-                dummy.scale.set(1, 0.6 + Math.random() * 0.7, 1);
-                dummy.rotation.y = Math.random() * Math.PI;
-                dummy.updateMatrix();
-                instancedGrass.setMatrixAt(i, dummy.matrix);
-            }
-            scene.add(instancedGrass);
-            grassMesh = instancedGrass;
-
-            // 3. РУКИ ЧЕЛОВЕКА (прикреплены к камере снизу)
+            // 3. РУКИ ЧЕЛОВЕКА (с рукавами из image_7.png)
             handsGroup = new THREE.Group();
             
-            const skinMaterial = new THREE.MeshLambertMaterial({ color: 0xffdbac }); // Телесный цвет кожи
-            const sleeveMaterial = new THREE.MeshLambertMaterial({ color: 0x224488 }); // Синий рукав кофты
+            const skinMat = new THREE.MeshLambertMaterial({ color: 0xd8a47f }); // Цвет кожи рук
+            const sleeveMat = new THREE.MeshLambertMaterial({ color: 0x111111 }); // Черный рукав с узором
+            const accentMat = new THREE.MeshLambertMaterial({ color: 0xd35400 }); // Оранжевая окантовка
 
-            // Левая рука
-            const leftArmGeo = new THREE.CylinderGeometry(0.06, 0.08, 0.6, 16);
-            const leftArm = new THREE.Mesh(leftArmGeo, sleeveMaterial);
-            leftArm.rotation.z = -Math.PI / 4;
-            leftArm.position.set(-0.3, -0.35, -0.5);
-            handsGroup.add(leftArm);
+            // Левая рука (рукав + кисть)
+            const leftArmGroup = new THREE.Group();
+            const leftSleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 16), sleeveMat);
+            leftSleeve.rotation.z = -Math.PI / 4;
+            const leftBand = new THREE.Mesh(new THREE.CylinderGeometry(0.061, 0.061, 0.05, 16), accentMat);
+            leftBand.position.set(0, -0.2, 0);
+            leftBand.rotation.z = -Math.PI / 4;
+            const leftHand = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.09, 0.1), skinMat);
+            leftHand.position.set(-0.2, -0.3, 0);
+            leftArmGroup.add(leftSleeve, leftBand, leftHand);
+            leftArmGroup.position.set(-0.3, -0.35, -0.5);
+            handsGroup.add(leftArmGroup);
 
-            // Правая рука
-            const rightArmGeo = new THREE.CylinderGeometry(0.06, 0.08, 0.6, 16);
-            const rightArm = new THREE.Mesh(rightArmGeo, sleeveMaterial);
-            rightArm.rotation.z = Math.PI / 4;
-            rightArm.position.set(0.3, -0.35, -0.5);
-            handsGroup.add(rightArm);
+            // Правая рука (рукав + кисть)
+            const rightArmGroup = new THREE.Group();
+            const rightSleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 16), sleeveMat);
+            rightSleeve.rotation.z = Math.PI / 4;
+            const rightBand = new THREE.Mesh(new THREE.CylinderGeometry(0.061, 0.061, 0.05, 16), accentMat);
+            rightBand.position.set(0, -0.2, 0);
+            rightBand.rotation.z = Math.PI / 4;
+            const rightHand = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.09, 0.1), skinMat);
+            rightHand.position.set(0.2, -0.3, 0);
+            rightArmGroup.add(rightSleeve, rightBand, rightHand);
+            rightArmGroup.position.set(0.3, -0.35, -0.5);
+            handsGroup.add(rightArmGroup);
 
             camera.add(handsGroup);
 
-            // 4. НОГИ ЧЕЛОВЕКА (видимы снизу в поле зрения при ходьбе)
+            // 4. НОГИ ЧЕЛОВЕКА (реалистичные босые ноги с пальцами, как на image_8.png)
             legsGroup = new THREE.Group();
-            const pantsMaterial = new THREE.MeshLambertMaterial({ color: 0x2c3e50 }); // Штаны
             
-            const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.7, 16), pantsMaterial);
-            leftLeg.position.set(-0.15, -1.1, -0.4);
-            leftLeg.rotation.x = 0.1;
-            
-            const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.7, 16), pantsMaterial);
-            rightLeg.position.set(0.15, -1.1, -0.4);
-            rightLeg.rotation.x = -0.1;
+            function createFoot() {
+                const footGroup = new THREE.Group();
+                const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 16), skinMat);
+                shin.position.set(0, -0.2, 0);
+                
+                const footBase = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.06, 0.22), skinMat);
+                footBase.position.set(0, -0.48, 0.05);
 
-            legsGroup.add(leftLeg, rightLeg);
+                // Пальцы ног
+                for(let i=0; i<5; i++) {
+                    const toe = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 8), skinMat);
+                    toe.scale.set(0.8, 0.6, 1.5);
+                    toe.position.set(-0.03 + i * 0.015, -0.48, 0.16);
+                    footGroup.add(toe);
+                }
+
+                footGroup.add(shin, footBase);
+                return footGroup;
+            }
+
+            const leftFoot = createFoot();
+            leftFoot.position.set(-0.16, -1.0, -0.4);
+            leftFoot.rotation.x = 0.15;
+
+            const rightFoot = createFoot();
+            rightFoot.position.set(0.16, -1.0, -0.4);
+            rightFoot.rotation.x = -0.15;
+
+            legsGroup.add(leftFoot, rightFoot);
             camera.add(legsGroup);
 
             // Изменение размера окна
@@ -223,7 +266,7 @@
                 controls.moveRight(-velocity.x * delta);
                 controls.moveForward(-velocity.z * delta);
 
-                // Анимация покачивания рук и ног при ходьбе (трава под ногами реагирует)
+                // Анимация покачивания рук и ног при ходьбе
                 if (moveForward || moveBackward || moveLeft || moveRight) {
                     handAnimTime += delta * 12;
                     handsGroup.position.y = Math.sin(handAnimTime) * 0.03;
@@ -231,14 +274,12 @@
 
                     // Шагающие движения ног
                     legsGroup.position.y = Math.sin(handAnimTime) * 0.05;
-                    legsGroup.children[0].rotation.x = Math.sin(handAnimTime) * 0.3;
-                    legsGroup.children[1].rotation.x = -Math.sin(handAnimTime) * 0.3;
+                    legsGroup.children[0].position.z = -0.4 + Math.sin(handAnimTime) * 0.1;
+                    legsGroup.children[1].position.z = -0.4 - Math.sin(handAnimTime) * 0.1;
                 } else {
                     handsGroup.position.y = THREE.MathUtils.lerp(handsGroup.position.y, 0, 0.1);
                     handsGroup.position.x = THREE.MathUtils.lerp(handsGroup.position.x, 0, 0.1);
                     legsGroup.position.y = THREE.MathUtils.lerp(legsGroup.position.y, 0, 0.1);
-                    legsGroup.children[0].rotation.x = THREE.MathUtils.lerp(legsGroup.children[0].rotation.x, 0.1, 0.1);
-                    legsGroup.children[1].rotation.x = THREE.MathUtils.lerp(legsGroup.children[1].rotation.x, -0.1, 0.1);
                 }
             }
 
