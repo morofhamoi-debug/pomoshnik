@@ -1,3701 +1,969 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#0a0b0d">
-<title>APEX RING — Симулятор бокса</title>
-<style>
-/* ================= Базовые стили ================= */
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;}
-html,body{width:100%;height:100%;overflow:hidden;background:#07080a;color:#e9eaee;
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  overscroll-behavior:none;}
-#renderCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none;touch-action:none;}
-.hidden{display:none !important;}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#050507">
+    <title>Dynamic Bounce</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+        }
 
-/* ================= Меню ================= */
-#menu{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;
-  background:radial-gradient(ellipse at 50% 35%,rgba(24,26,32,.86) 0%,rgba(6,7,9,.96) 70%);
-  backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
-  padding:calc(env(safe-area-inset-top,0px) + 14px) 16px calc(env(safe-area-inset-bottom,0px) + 14px);
-  overflow-y:auto;}
-.brand{text-align:center;margin:14px 0 6px;}
-.brand h1{font-size:clamp(26px,7vw,54px);letter-spacing:.22em;font-weight:800;
-  background:linear-gradient(180deg,#fff 0%,#c9ccd4 55%,#7d828d 100%);
-  -webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 40px rgba(255,255,255,.09);}
-.brand .sub{font-size:clamp(9px,2.4vw,12px);letter-spacing:.42em;color:#8a8f9b;margin-top:6px;text-transform:uppercase;}
-.brand .rule{width:min(460px,72%);height:1px;margin:14px auto 0;
-  background:linear-gradient(90deg,transparent,#b8372f 20%,#e9eaee 50%,#b8372f 80%,transparent);opacity:.75;}
-.menu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;
-  max-width:720px;width:100%;margin:20px auto 10px;}
-.mbtn{padding:15px 14px;border:1px solid rgba(255,255,255,.10);border-radius:11px;
-  background:linear-gradient(180deg,rgba(38,41,49,.92),rgba(20,22,27,.92));
-  color:#e9eaee;font-size:14px;font-weight:600;letter-spacing:.08em;cursor:pointer;
-  transition:transform .12s ease,border-color .16s ease,background .16s ease;text-align:center;}
-.mbtn:hover,.mbtn:focus-visible{border-color:#c0392b;background:linear-gradient(180deg,rgba(56,32,32,.95),rgba(28,18,18,.95));transform:translateY(-2px);outline:none;}
-.mbtn:active{transform:translateY(0) scale(.985);}
-.mbtn.primary{border-color:rgba(192,57,43,.6);background:linear-gradient(180deg,rgba(122,36,30,.92),rgba(58,19,16,.92));}
-.mbtn small{display:block;font-weight:400;font-size:11px;color:#9aa0ab;letter-spacing:.03em;margin-top:4px;}
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050507;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+            color: #FFFFFF;
+            touch-action: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
 
-/* ================= Панели / Настройки ================= */
-.panel{max-width:760px;width:100%;margin:8px auto 16px;border:1px solid rgba(255,255,255,.09);
-  border-radius:14px;background:rgba(14,15,19,.92);padding:18px;}
-.panel h2{font-size:15px;letter-spacing:.18em;text-transform:uppercase;color:#cfd3da;
-  margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:10px;}
-.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;
-  border-bottom:1px solid rgba(255,255,255,.045);font-size:13px;}
-.row:last-child{border-bottom:none;}
-.row label{color:#b9bec7;flex:1;min-width:0;}
-.row .val{color:#e9eaee;font-variant-numeric:tabular-nums;min-width:52px;text-align:right;font-size:12px;}
-input[type=range]{width:130px;accent-color:#c0392b;background:transparent;height:22px;}
-select,button.mini{background:#1b1d23;color:#e9eaee;border:1px solid rgba(255,255,255,.13);
-  border-radius:7px;padding:6px 9px;font-size:12px;font-family:inherit;cursor:pointer;}
-button.mini:hover{border-color:#c0392b;}
-.seg{display:flex;gap:6px;flex-wrap:wrap;}
-.seg button{padding:7px 12px;border-radius:7px;border:1px solid rgba(255,255,255,.13);
-  background:#1b1d23;color:#b9bec7;font-size:12px;cursor:pointer;font-family:inherit;}
-.seg button.on{background:#7a241e;border-color:#c0392b;color:#fff;}
-.keybtn{min-width:74px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;}
-.keybtn.listening{border-color:#e0b23a;color:#e0b23a;}
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at center, #0d0e15 0%, #050507 100%);
+        }
 
-/* ================= Выбор бойца ================= */
-.fighters{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px;}
-.fcard{border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:13px;cursor:pointer;
-  background:linear-gradient(180deg,rgba(30,33,40,.9),rgba(16,17,21,.9));transition:.15s;}
-.fcard:hover{border-color:rgba(192,57,43,.6);}
-.fcard.sel{border-color:#c0392b;box-shadow:0 0 0 1px rgba(192,57,43,.5),0 8px 26px rgba(0,0,0,.5);}
-.fcard h3{font-size:14px;letter-spacing:.1em;margin-bottom:3px;}
-.fcard .st{font-size:11px;color:#8a8f9b;letter-spacing:.1em;text-transform:uppercase;margin-bottom:9px;}
-.bar{display:flex;align-items:center;gap:8px;font-size:11px;color:#9aa0ab;margin:4px 0;}
-.bar .n{width:86px;flex:none;}
-.bar .t{flex:1;height:5px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden;}
-.bar .f{height:100%;background:linear-gradient(90deg,#8e2a22,#d9534a);border-radius:3px;}
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
 
-/* ================= HUD ================= */
-#hud{position:absolute;inset:0;z-index:20;pointer-events:none;
-  padding:calc(env(safe-area-inset-top,0px) + 8px) calc(env(safe-area-inset-right,0px) + 10px)
-          calc(env(safe-area-inset-bottom,0px) + 8px) calc(env(safe-area-inset-left,0px) + 10px);}
-.hud-top{display:flex;justify-content:center;align-items:flex-start;gap:10px;}
-.fighter-bar{flex:1;max-width:340px;background:linear-gradient(180deg,rgba(10,11,14,.78),rgba(10,11,14,.55));
-  border:1px solid rgba(255,255,255,.09);border-radius:10px;padding:8px 10px;backdrop-filter:blur(4px);}
-.fighter-bar.right{text-align:right;}
-.fname{font-size:12px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#e9eaee;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.fmeta{font-size:9px;letter-spacing:.16em;color:#868c97;margin-top:2px;text-transform:uppercase;}
-.hpwrap{height:6px;background:rgba(255,255,255,.08);border-radius:3px;margin-top:6px;overflow:hidden;}
-.hp{height:100%;width:100%;background:linear-gradient(90deg,#c0392b,#e8756a);transition:width .18s ease;}
-.stwrap{height:4px;background:rgba(255,255,255,.06);border-radius:2px;margin-top:4px;overflow:hidden;}
-.stbar{height:100%;width:100%;background:linear-gradient(90deg,#2f7d5b,#54c48d);transition:width .12s linear;}
-.center-hud{width:104px;flex:none;text-align:center;background:linear-gradient(180deg,rgba(10,11,14,.82),rgba(10,11,14,.6));
-  border:1px solid rgba(255,255,255,.09);border-radius:10px;padding:6px 4px;backdrop-filter:blur(4px);}
-.round-n{font-size:9px;letter-spacing:.2em;color:#868c97;text-transform:uppercase;}
-.timer{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.03em;line-height:1.1;}
-.timer.low{color:#e05a4c;}
-.scoreline{font-size:10px;color:#9aa0ab;font-variant-numeric:tabular-nums;letter-spacing:.08em;}
+        .screen-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: calc(env(safe-area-inset-top, 20px) + 20px) 24px calc(env(safe-area-inset-bottom, 20px) + 24px);
+            z-index: 10;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
 
-#statMini{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 96px);
-  display:flex;gap:14px;font-size:10px;color:#9aa0ab;letter-spacing:.1em;background:rgba(10,11,14,.6);
-  border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:5px 12px;font-variant-numeric:tabular-nums;}
-#announce{position:absolute;left:50%;top:36%;transform:translate(-50%,-50%);text-align:center;
-  font-size:clamp(24px,7vw,58px);font-weight:900;letter-spacing:.15em;text-transform:uppercase;
-  text-shadow:0 6px 34px rgba(0,0,0,.9);opacity:0;transition:opacity .28s ease;color:#fff;}
-#announce.show{opacity:1;}
-#announce small{display:block;font-size:clamp(10px,2.6vw,15px);letter-spacing:.35em;font-weight:500;
-  color:#c0392b;margin-top:8px;}
+        .screen-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
 
-/* ================= Сенсорное управление ================= */
-#touch{position:absolute;inset:0;z-index:25;pointer-events:none;display:none;}
-#touch.on{display:block;}
-.stick-base{position:absolute;left:calc(env(safe-area-inset-left,0px) + 18px);
-  bottom:calc(env(safe-area-inset-bottom,0px) + 20px);width:132px;height:132px;border-radius:50%;
-  background:radial-gradient(circle,rgba(255,255,255,.055),rgba(255,255,255,.015));
-  border:1px solid rgba(255,255,255,.14);pointer-events:auto;touch-action:none;}
-.stick-knob{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;
-  background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.34),rgba(160,166,178,.16));
-  border:1px solid rgba(255,255,255,.3);transition:transform .06s linear;}
-.tbtn{position:absolute;border-radius:50%;pointer-events:auto;touch-action:none;
-  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;letter-spacing:.05em;
-  color:#eef0f4;border:1px solid rgba(255,255,255,.24);
-  background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.2),rgba(20,22,27,.72));
-  box-shadow:0 5px 18px rgba(0,0,0,.5);transition:transform .07s ease,background .1s ease;text-align:center;line-height:1.05;}
-.tbtn.hit{transform:scale(.9);background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.4),rgba(140,40,34,.85));}
-.tbtn.big{width:76px;height:76px;font-size:12px;}
-.tbtn.mid{width:62px;height:62px;}
-.tbtn.sm{width:52px;height:52px;font-size:10px;}
-#padRight{position:absolute;right:calc(env(safe-area-inset-right,0px) + 14px);
-  bottom:calc(env(safe-area-inset-bottom,0px) + 16px);width:264px;height:238px;pointer-events:none;}
+        /* Top Bar Info */
+        .hud-header {
+            position: absolute;
+            top: calc(env(safe-area-inset-top, 12px) + 12px);
+            left: 0;
+            width: 100%;
+            padding: 0 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 5;
+            pointer-events: none;
+        }
 
-/* ================= Состояния и уведомления ================= */
-#toast{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 150px);
-  z-index:60;background:rgba(12,13,17,.94);border:1px solid rgba(255,255,255,.13);border-radius:10px;
-  padding:10px 18px;font-size:12.5px;letter-spacing:.04em;opacity:0;transition:opacity .3s ease;
-  pointer-events:none;max-width:88vw;text-align:center;}
-#toast.show{opacity:1;}
-#loader{position:absolute;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  background:#07080a;gap:16px;}
-#loader .ring{width:52px;height:52px;border:3px solid rgba(255,255,255,.1);border-top-color:#c0392b;
-  border-radius:50%;animation:spin .9s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg);}}
-#loader p{font-size:12px;letter-spacing:.28em;color:#868c97;text-transform:uppercase;}
-#fatal{position:absolute;inset:0;z-index:90;display:none;flex-direction:column;align-items:center;justify-content:center;
-  background:#0a0707;padding:26px;text-align:center;gap:14px;}
-#fatal.show{display:flex;}
-#fatal h2{color:#e05a4c;font-size:18px;letter-spacing:.14em;}
-#fatal p{color:#a9aeb8;font-size:13px;line-height:1.65;max-width:520px;}
+        .score-pill {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
+            padding: 6px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            color: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
 
-/* ================= Адаптивная вёрстка ================= */
-@media (max-width:820px){
-  .panel{padding:14px;border-radius:12px;}
-  .row{font-size:12px;}
-  input[type=range]{width:100px;}
-  .fighter-bar{max-width:none;}
-  .center-hud{width:86px;}
-  .timer{font-size:22px;}
-}
-@media (max-width:520px){
-  .menu-grid{grid-template-columns:1fr 1fr;gap:8px;}
-  .mbtn{padding:12px 8px;font-size:12px;}
-  #padRight{width:212px;height:196px;}
-  .tbtn.big{width:64px;height:64px;font-size:11px;}
-  .tbtn.mid{width:54px;height:54px;}
-  .tbtn.sm{width:46px;height:46px;font-size:9px;}
-  .stick-base{width:112px;height:112px;}
-  .stick-knob{width:48px;height:48px;margin:-24px 0 0 -24px;}
-  #statMini{font-size:9px;gap:9px;padding:4px 9px;}
-}
-@media (orientation:landscape) and (max-height:460px){
-  .brand{margin:2px 0;}
-  .brand h1{font-size:22px;}
-  .brand .sub{font-size:8px;}
-  .menu-grid{margin:8px auto;}
-}
-</style>
+        .audio-btn {
+            pointer-events: auto;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.2s ease;
+        }
+
+        .audio-btn:active {
+            transform: scale(0.9);
+            background: rgba(255, 255, 255, 0.18);
+        }
+
+        .audio-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: #FFFFFF;
+        }
+
+        /* Hero / Logo Section */
+        .brand-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 40px;
+            text-align: center;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 20px;
+            background: #FFFFFF;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 25px rgba(255, 255, 255, 0.5);
+            position: relative;
+        }
+
+        .logo-icon::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 8px;
+            height: 8px;
+            background: #050507;
+            border-radius: 50%;
+        }
+
+        .app-title {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(180deg, #FFFFFF 0%, rgba(255, 255, 255, 0.6) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .app-subtitle {
+            font-size: 14px;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.5);
+            max-width: 240px;
+            line-height: 1.4;
+        }
+
+        /* Buttons Styling */
+        .action-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: calc(env(safe-area-inset-bottom, 0px));
+        }
+
+        .btn-oval {
+            width: 100%;
+            max-width: 320px;
+            height: 56px;
+            border-radius: 28px;
+            background: #FFFFFF;
+            color: #000000;
+            font-size: 17px;
+            font-weight: 600;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 8px 30px rgba(255, 255, 255, 0.15);
+            transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s ease, background-color 0.2s ease;
+        }
+
+        .btn-oval:active {
+            transform: scale(0.96);
+            opacity: 0.88;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #FFFFFF;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: none;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .btn-secondary:active {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Game Over Stats */
+        .stats-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 24px;
+            width: 100%;
+            max-width: 320px;
+            text-align: center;
+            margin: auto 0;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .stats-label {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255, 255, 255, 0.4);
+            margin-bottom: 4px;
+        }
+
+        .stats-value-large {
+            font-size: 56px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            color: #FFFFFF;
+            margin-bottom: 16px;
+            line-height: 1;
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .stats-row-label {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .stats-row-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #FFFFFF;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .screen-overlay, .btn-oval, .audio-btn {
+                transition: none !important;
+            }
+        }
+    </style>
 </head>
 <body>
 
-<canvas id="renderCanvas"></canvas>
+    <div id="game-container">
+        <!-- Canvas Element -->
+        <canvas id="gameCanvas"></canvas>
 
-<!-- ================= HUD ================= -->
-<div id="hud" class="hidden">
-  <div class="hud-top">
-    <div class="fighter-bar">
-      <div class="fname" id="p1name">БОКСЁР</div>
-      <div class="fmeta" id="p1meta">Ортодокс</div>
-      <div class="hpwrap"><div class="hp" id="p1hp"></div></div>
-      <div class="stwrap"><div class="stbar" id="p1st"></div></div>
+        <!-- Dynamic Game Header HUD -->
+        <div class="hud-header">
+            <div id="hudScore" class="score-pill">0</div>
+            <button id="audioToggle" class="audio-btn" aria-label="Звук">
+                <svg id="iconSoundOn" viewBox="0 0 24 24">
+                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                </svg>
+                <svg id="iconSoundOff" viewBox="0 0 24 24" style="display: none;">
+                    <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Start Screen -->
+        <div id="startScreen" class="screen-overlay">
+            <div class="brand-section">
+                <div class="logo-icon"></div>
+                <h1 class="app-title">DYNAMIC BOUNCE</h1>
+                <p class="app-subtitle">Минималистичная аркада. Управляйте платформой и отбивайте мяч.</p>
+            </div>
+            <div class="action-container">
+                <button id="startBtn" class="btn-oval">Начать</button>
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="gameOverScreen" class="screen-overlay hidden">
+            <div class="brand-section" style="margin-top: 20px;">
+                <h1 class="app-title" style="font-size: 24px;">РАУНД ЗАВЕРШЕН</h1>
+            </div>
+
+            <div class="stats-card">
+                <div class="stats-label">Итоговый счет</div>
+                <div id="finalScore" class="stats-value-large">0</div>
+                <div class="stats-row">
+                    <span class="stats-row-label">Рекорд</span>
+                    <span id="bestScore" class="stats-row-value">0</span>
+                </div>
+            </div>
+
+            <div class="action-container">
+                <button id="restartBtn" class="btn-oval">Еще раз</button>
+                <button id="homeBtn" class="btn-oval btn-secondary">В меню</button>
+            </div>
+        </div>
     </div>
-    <div class="center-hud">
-      <div class="round-n" id="roundLabel">РАУНД 1/3</div>
-      <div class="timer" id="timer">3:00</div>
-      <div class="scoreline" id="scoreLine">0 : 0</div>
-    </div>
-    <div class="fighter-bar right">
-      <div class="fname" id="p2name">СОПЕРНИК</div>
-      <div class="fmeta" id="p2meta">Ортодокс</div>
-      <div class="hpwrap"><div class="hp" id="p2hp"></div></div>
-      <div class="stwrap"><div class="stbar" id="p2st"></div></div>
-    </div>
-  </div>
-  <div id="statMini">
-    <span id="sLand">ПОПАДАНИЙ 0</span>
-    <span id="sMiss">ПРОМАХОВ 0</span>
-    <span id="sBlock">БЛОКОВ 0</span>
-    <span id="sFps">60 FPS</span>
-  </div>
-  <div id="announce"></div>
-</div>
 
-<!-- ================= Сенсорное управление ================= -->
-<div id="touch">
-  <div class="stick-base" id="stickBase"><div class="stick-knob" id="stickKnob"></div></div>
-  <div id="padRight">
-    <div class="tbtn big"  id="tbCross"  style="right:78px;bottom:96px;">ПРЯМОЙ</div>
-    <div class="tbtn mid"  id="tbJab"    style="right:170px;bottom:112px;">ДЖЕБ</div>
-    <div class="tbtn mid"  id="tbHookL"  style="right:150px;bottom:26px;">ХУК Л</div>
-    <div class="tbtn mid"  id="tbHookR"  style="right:20px;bottom:20px;">ХУК П</div>
-    <div class="tbtn sm"   id="tbUpL"    style="right:216px;bottom:52px;">АП Л</div>
-    <div class="tbtn sm"   id="tbUpR"    style="right:96px;bottom:-6px;">АП П</div>
-    <div class="tbtn sm"   id="tbBlock"  style="right:214px;bottom:150px;">БЛОК</div>
-    <div class="tbtn sm"   id="tbDodgeL" style="right:132px;bottom:170px;">УКЛ◀</div>
-    <div class="tbtn sm"   id="tbDodgeR" style="right:56px;bottom:186px;">УКЛ▶</div>
-  </div>
-</div>
+    <script>
+        /**
+         * AUDIO SYNTHESIZER (Web Audio API)
+         * Generates pleasant, latency-free, low-footprint sound synthesis without external MP3 assets.
+         */
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+                this.initialized = false;
+            }
 
-<!-- ================= Меню ================= -->
-<div id="menu">
-  <div class="brand">
-    <h1>APEX RING</h1>
-    <div class="sub">Профессиональный симулятор бокса</div>
-    <div class="rule"></div>
-  </div>
+            init() {
+                if (this.initialized) return;
+                try {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContext) {
+                        this.ctx = new AudioContext();
+                        this.initialized = true;
+                    }
+                } catch (e) {
+                    console.warn('Web Audio API not supported:', e);
+                }
+            }
 
-  <div id="menuMain">
-    <div class="menu-grid">
-      <button class="mbtn primary" data-nav="quick">НАЧАТЬ БОЙ<small>Быстрый старт</small></button>
-      <button class="mbtn" data-nav="fight">НАСТРОИТЬ БОЙ<small>Раунды и время</small></button>
-      <button class="mbtn" data-nav="select">ВЫБОР БОКСЁРА<small>Характеристики</small></button>
-      <button class="mbtn" data-nav="training">ТРЕНИРОВКА<small>Разбор техники</small></button>
-      <button class="mbtn" data-nav="settings">НАСТРОЙКИ<small>Графика и звук</small></button>
-      <button class="mbtn" data-nav="controls">УПРАВЛЕНИЕ<small>Клавиши и геймпад</small></button>
-      <button class="mbtn" data-nav="stats">СТАТИСТИКА<small>История боёв</small></button>
-      <button class="mbtn" data-nav="about">ОБ ИГРЕ<small>Информация</small></button>
-    </div>
-  </div>
+            resume() {
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
 
-  <div id="menuFight" class="hidden"></div>
-  <div id="menuSelect" class="hidden"></div>
-  <div id="menuSettings" class="hidden"></div>
-  <div id="menuControls" class="hidden"></div>
-  <div id="menuStats" class="hidden"></div>
-  <div id="menuTraining" class="hidden"></div>
-  <div id="menuAbout" class="hidden"></div>
-  <div id="menuResult" class="hidden"></div>
+            playBounce(isPaddle = true) {
+                if (this.muted || !this.ctx) return;
+                this.resume();
 
-  <div id="menuFooter" style="text-align:center;font-size:10.5px;color:#5e636d;letter-spacing:.12em;margin-top:auto;padding-top:14px;">
-    BABYLON.JS · WEBGL · WEB AUDIO · LOCALSTORAGE
-  </div>
-</div>
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
 
-<!-- ================= Уведомления ================= -->
-<div id="toast"></div>
+                    osc.type = isPaddle ? 'sine' : 'triangle';
+                    
+                    // Higher pitch for paddle hit, lower soft thud for wall
+                    const startFreq = isPaddle ? 440 : 220;
+                    const endFreq = isPaddle ? 880 : 110;
 
-<div id="loader">
-  <div class="ring"></div>
-  <p>Загрузка арены</p>
-</div>
+                    osc.frequency.setValueAtTime(startFreq, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(endFreq, this.ctx.currentTime + 0.08);
 
-<div id="fatal">
-  <h2>НЕ УДАЛОСЬ ЗАГРУЗИТЬ ДВИЖОК</h2>
-  <p id="fatalMsg">Babylon.js не загрузился с CDN. Для запуска игры требуется подключение к интернету.
-     Проверьте соединение и обновите страницу. Если вы открываете файл через <b>file://</b>,
-     рекомендуется запустить его через локальный HTTP-сервер.</p>
-</div>
+                    gain.gain.setValueAtTime(isPaddle ? 0.3 : 0.15, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.08);
 
-<script src="https://cdn.babylonjs.com/babylon.js"></script>
-<script>
-"use strict";
-/* =========================================================================
-   APEX RING — симулятор бокса. Всё в одном файле.
-   ========================================================================= */
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
 
-/* ======================= Конфигурация и константы ======================= */
-const V3 = BABYLON.Vector3;
-const QT = BABYLON.Quaternion;
-const MX = BABYLON.Matrix;
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.08);
+                } catch (e) {
+                    // Ignore audio playback exceptions safely
+                }
+            }
 
-const CFG = {
-  ring: { half: 3.05, postH: 1.55, ropes: [0.42, 0.78, 1.14], ropeR: 0.028 },
-  gravityStep: 1 / 120,                 // фиксированный шаг физики
-  maxStepAccum: 0.25,
-  body: {
-    pelvisY: 0.985, hipSpread: 0.115, hipDrop: 0.055,
-    spineLow: 0.115, spineMid: 0.125, chestLen: 0.20,
-    neckLen: 0.075, headR: 0.108,
-    shoulderSpread: 0.205, shoulderY: 0.115,
-    upperArm: 0.315, foreArm: 0.295, gloveR: 0.105,
-    thigh: 0.455, shin: 0.455, ankleH: 0.085,
-    footLen: 0.255, footW: 0.098
-  },
-  combat: {
-    minDist: 0.62, maxDist: 3.6,
-    ringMargin: 0.55
-  }
-};
+            playGameOver() {
+                if (this.muted || !this.ctx) return;
+                this.resume();
 
-/* Типы ударов. Все координаты — в локальном пространстве бойца:
-   +Z — вперёд (к сопернику), +X — вправо бойца, +Y — вверх. */
-const PUNCH_DB = {
-  jab: {
-    label: 'Джеб', hand: 'L', dur: 0.30, power: 0.52, stam: 0.045, zone: 'head', reach: 0.60,
-    path: [
-      { t: 0.00, p: [-0.13, 1.48, 0.24] },
-      { t: 0.16, p: [-0.10, 1.50, 0.30] },
-      { t: 0.42, p: [-0.03, 1.555, 0.62] },
-      { t: 0.55, p: [-0.02, 1.560, 0.66] },
-      { t: 1.00, p: [-0.13, 1.48, 0.24] }
-    ],
-    body: [
-      { t: 0.00, py: 0.00, cy: 0.00, lean: 0.00, hL: 0.00, hR: 0.00, pvL: 0.20, pvR: 0.70, drop: 0.00 },
-      { t: 0.16, py: 0.03, cy: 0.08, lean: 0.02, hL: 0.00, hR: 0.00, pvL: 0.22, pvR: 0.70, drop: 0.01 },
-      { t: 0.42, py: 0.10, cy: 0.20, lean: 0.05, hL: 0.00, hR: 0.05, pvL: 0.30, pvR: 0.78, drop: 0.02 },
-      { t: 0.55, py: 0.11, cy: 0.22, lean: 0.055, hL: 0.00, hR: 0.05, pvL: 0.32, pvR: 0.80, drop: 0.02 },
-      { t: 1.00, py: 0.00, cy: 0.00, lean: 0.00, hL: 0.00, hR: 0.00, pvL: 0.20, pvR: 0.70, drop: 0.00 }
-    ]
-  },
-  cross: {
-    label: 'Правый прямой', hand: 'R', dur: 0.42, power: 1.0, stam: 0.11, zone: 'head', reach: 0.66,
-    path: [
-      { t: 0.00, p: [0.08, 1.50, 0.12] },
-      { t: 0.20, p: [0.10, 1.51, 0.06] },
-      { t: 0.50, p: [0.02, 1.560, 0.60] },
-      { t: 0.63, p: [0.00, 1.565, 0.70] },
-      { t: 1.00, p: [0.08, 1.50, 0.12] }
-    ],
-    body: [
-      { t: 0.00, py: 0.00, cy: 0.00, lean: 0.00, hL: 0.00, hR: 0.00, pvL: 0.20, pvR: 0.70, drop: 0.00 },
-      { t: 0.20, py: 0.10, cy: 0.14, lean: 0.02, hL: 0.00, hR: 0.05, pvL: 0.20, pvR: 0.95, drop: 0.02 },
-      { t: 0.50, py: 0.46, cy: 0.60, lean: 0.07, hL: 0.00, hR: 0.16, pvL: 0.18, pvR: 1.45, drop: 0.05 },
-      { t: 0.63, py: 0.54, cy: 0.72, lean: 0.085, hL: 0.00, hR: 0.19, pvL: 0.16, pvR: 1.60, drop: 0.06 },
-      { t: 1.00, py: 0.00, cy: 0.00, lean: 0.00, hL: 0.00, hR: 0.00, pvL: 0.20, pvR: 0.70, drop: 0.00 }
-    ]
-  },
-  hookL: {
-    label: 'Левый хук', hand: 'L', dur: 0.36, power: 0.85, stam: 0.09, zone: 'head', reach: 0.42,
-    path: [
-      { t: 0.00, p: [-0.13, 1.48, 0.24] },
-      { t: 0.22, p: [-0.28, 1.50, 0.30] },
-      { t: 0.48, p: [-0.44, 1.545, 0.44] },
-      { t: 0.62, p: [-0.36, 1.550, 0.54] },
-      { t: 1.00, p: [-0.13, 1.48, 0.24] }
-    ],
-    body: [
-      { t: 0.00, py: 0.00, cy: 0.00, lean: 0.00, hL: 0.00, hR: 0.00, pvL: 0.20, pvR: 0.70, drop: 0.00 },
-      { t: 0.22, py: -0.14, cy: -0.18, lean: 0.00, hL: 0.02, hR: 0.00, pvL: 0.30, pvR: 0.70, drop: 0.03 },
-      { t: 0.48, py: -0.44, cy: -0.60, lean: 0.03, hL: 0.10, hR: 0.00, pvL: 0.62, pvR: 0.70, drop: 0.05 },
-      { t: 0.62, py: -0.50, cy: -0.70, lean: 0.04, hL: 0.13, hR: 0.00, pvL: 0.72, pvR: 0.70, drop: 0.05 },
-      { t: 1.00, py: 0.00, cy: 0.00, lean: 0.00, hL: 0.00, hR: 0.00, pvL: 0.20, pvR: 0.70, drop: 0.00 }
-    ]
-  },
-  hookR: {
-    label: 'Правый хук', hand: 'R', dur: 0.40, power: 0.95, stam: 0.105, zone: 'head', reach: 0.40,
-    path: [
-      { t: 0.00, p: [0.08, 1.50, 0.12] },
-      { t: 0.22, p: [0.26, 1.51, 0.16] },
-      { t: 0.50, p: [0.46, 1.545, 0.36] },
-      { t: 0.64, p: [0.30, 1.550, 0.52] },
-      { t: 1.00, p: [0.08, 1.50, 0.12] }
-    ],
-    body: [
-      { t: 0.00, py: 0.00, cy: 0.00, lean: 0.00, hL: 0.00, hR: 0.00, pvL: 0.20, pvR: 0.70, drop: 0.00 },
-      { t: 0.22, py: 0.16, cy: 0.16, lean: 0.01, hL: 0.00, hR: 0.07, pvL: 0.20, pvR: 1.00, drop: 0.02 },
-      { t: 0.50, py: 0.52, cy: 0.66, lean: 0.05, hL: 0.00, hR: 0.17, pvL: 0.18, pvR: 1.50, drop: 0.05 },
-      { t: 0.64, py: 0.60, cy: 0.78, lean: 0.06, hL: 0.00, hR: 0.20, pvL: 0.16, pvR: 1.62, drop: 0.05 },
-      { t: 1.00, py: 0.00, cy: 0.00, lean: 0.00, hL: 0.00, hR: 0.00, pvL: 0.20, pvR: 0.70, drop: 0.00 }
-    ]
-  },
-  uppercutL: {
-    label: 'Левый апперкот', hand: 'L', dur: 0.38, power: 0.78, stam: 0.095, zone: 'body', reach: 0.34,
-    path: [
-      { t: 0.00, p: [-0.13, 1.48, 0.24] },
-      { t: 0.22, p: [-0.16, 1.30, 0.26] },
-      { t: 0.52, p: [-0.10, 1.52, 0.46] },
-      { t: 0.64, p: [-0.08, 1.60, 0.50] },
-      { t: 1.00, p: [-0.13, 1.48, 0.24] }
-    ],
-    body: [
-      { t: 0.00, py: 0.00, cy: 0.00, lean: 0.00, hL: 0.00, hR: 0.00, pvL: 0.20, pvR: 0.70, drop: 0.00 },
-      { t: 0.22, py: -0.06, cy: -0.06, lean: 0.06, hL: 0.00, hR: 0.00, pvL: 0.22, pvR: 0.70, drop: 0.10 },
-      { t: 0.52, py: 0.18, cy: 0.24, lean: -0.05, hL: 0.05, hR: 0.00, pvL: 0.34, pvR: 0.72, drop: -0.02 },
-      { t: 0.64, py: 0.20, cy: 0.28, lean: -0.06, hL: 0.06, hR: 0.00, pvL: 0.36, pvR: 0.72, drop: -0.03 },
-      { t: 1.00, py: 0.00, cy: 0.00, lean: 0.00, hL: 0.00, hR: 0.00, pvL: 0.20, pvR: 0.70, drop: 0.00 }
-    ]
-  },
-  uppercutR: {
-    label: 'Правый апперкот', hand: 'R', dur: 0.44, power: 0.92, stam: 0.115, zone: 'body', reach: 0.36,
-    path: [
-      { t: 0.00, p: [0.08, 1.50, 0.12] },
-      { t: 0.22, p: [0.13, 1.28, 0.14] },
-      { t: 0.52, p: [0.06, 1.52, 0.44] },
-      { t: 0.66, p: [0.04, 1.61, 0.50] },
-      { t: 1.00, p: [0.08, 1.50, 0.12] }
-    ],
-    body: [
-      { t: 0.00, py: 0.00, cy: 0.00, lean: 0.00, hL: 0.00, hR: 0.00, pvL: 0.20, pvR: 0.70, drop: 0.00 },
-      { t: 0.22, py: 0.06, cy: 0.04, lean: 0.07, hL: 0.00, hR: 0.03, pvL: 0.20, pvR: 0.92, drop: 0.12 },
-      { t: 0.52, py: 0.30, cy: 0.38, lean: -0.06, hL: 0.00, hR: 0.12, pvL: 0.18, pvR: 1.35, drop: -0.02 },
-      { t: 0.66, py: 0.34, cy: 0.44, lean: -0.07, hL: 0.00, hR: 0.14, pvL: 0.16, pvR: 1.45, drop: -0.03 },
-      { t: 1.00, py: 0.00, cy: 0.00, lean: 0.00, hL: 0.00, hR: 0.00, pvL: 0.20, pvR: 0.70, drop: 0.00 }
-    ]
-  }
-};
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
 
-const FIGHTERS = [
-  { id:'krutov', name:'В. КРУТОВ', stance:'Ортодокс', orthodox:true, height:1.86, reach:1.90, mass:79,
-    speed:0.86, power:0.88, stamina:0.82, accuracy:0.84, defense:0.80,
-    skin:0xd9a882, shorts:0x1a1c22, glove:0x8e1f18, trim:0xe8e9ee },
-  { id:'orlov', name:'А. ОРЛОВ', stance:'Ортодокс', orthodox:true, height:1.79, reach:1.78, mass:72,
-    speed:0.94, power:0.72, stamina:0.90, accuracy:0.90, defense:0.74,
-    skin:0xe0b992, shorts:0x20242c, glove:0xe9eaee, trim:0x8e1f18 },
-  { id:'zaycev', name:'М. ЗАЙЦЕВ', stance:'Саутпо', orthodox:false, height:1.83, reach:1.86, mass:76,
-    speed:0.88, power:0.84, stamina:0.80, accuracy:0.78, defense:0.86,
-    skin:0xc08d63, shorts:0x2c1a1a, glove:0xc0392b, trim:0xe8e9ee },
-  { id:'severny', name:'И. СЕВЕРНЫЙ', stance:'Ортодокс', orthodox:true, height:1.92, reach:1.98, mass:96,
-    speed:0.70, power:1.00, stamina:0.70, accuracy:0.76, defense:0.78,
-    skin:0xbf8f6a, shorts:0x14161b, glove:0x2b3038, trim:0xc0392b }
-];
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(200, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(60, this.ctx.currentTime + 0.35);
 
-const AI_STYLES = {
-  technical: { aggr:0.42, guard:0.60, counter:0.35, footwork:0.75, comboLen:2, reactMs:170 },
-  aggressive:{ aggr:0.80, guard:0.34, counter:0.20, footwork:0.55, comboLen:4, reactMs:210 },
-  counter:   { aggr:0.34, guard:0.62, counter:0.85, footwork:0.62, comboLen:2, reactMs:130 },
-  defensive: { aggr:0.26, guard:0.82, counter:0.48, footwork:0.68, comboLen:2, reactMs:150 }
-};
+                    gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.35);
 
-/* ======================= Состояние игры ======================= */
-const Game = {
-  engine: null, scene: null, canvas: null,
-  player: null, opponent: null,
-  ai: null, camera: null, hud: null, audio: null, input: null,
-  state: 'boot',        // boot | menu | intro | fighting | roundEnd | break | fightEnd | training
-  round: 1, rounds: 3, roundTime: 180, timeLeft: 180,
-  scores: [0,0], roundScores: [],
-  started: false, trainingMode:false,
-  slowMo: 1, showHitboxes:false, showSkeleton:false, showTrails:false,
-  fixedAccum: 0, fpsSmoothed: 60, lastT: 0, frame: 0
-};
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
 
-/* ======================= Утилиты ======================= */
-const clamp = (v,a,b)=>v<a?a:(v>b?b:v);
-const lerp = (a,b,t)=>a+(b-a)*t;
-const smoothstep = t => t*t*(3-2*t);
-const easeOutCubic = t => 1-Math.pow(1-t,3);
-const easeInCubic = t => t*t*t;
-const rand = (a,b)=>a+Math.random()*(b-a);
-const randInt = (a,b)=>Math.floor(rand(a,b+1));
-const pick = arr => arr[Math.floor(Math.random()*arr.length)];
-const DEG = Math.PI/180;
-
-function localMatrix(n){
-  return MX.Compose(n.scaling || V3.OneReadOnly, n.rotationQuaternion || QT.Identity(), n.position);
-}
-function worldMatrix(n){
-  let m = localMatrix(n);
-  let p = n.parent;
-  while(p){ m = localMatrix(p).multiply(m); p = p.parent; }
-  return m;
-}
-function worldPos(n){ return worldMatrix(n).getTranslation(); }
-function worldQuat(n){
-  const s=new V3(), q=new QT(), t=new V3();
-  worldMatrix(n).decompose(s,q,t);
-  return q;
-}
-const _downAxis = new V3(0,-1,0);
-function quatFromDir(dir){
-  const d = dir.clone();
-  const L = d.length();
-  if (L < 1e-6) return QT.Identity();
-  d.scaleInPlace(1/L);
-  const dot = V3.Dot(_downAxis, d);
-  if (dot > 0.99999) return QT.Identity();
-  if (dot < -0.99999) return QT.RotationAxis(new V3(1,0,0), Math.PI);
-  const axis = V3.Cross(_downAxis, d);
-  axis.normalize();
-  return QT.RotationAxis(axis, Math.acos(clamp(dot,-1,1)));
-}
-/* Двухкостная IK. Возвращает направления костей в мировом пространстве. */
-function solveTwoBone(rootP, targetP, poleDir, L1, L2){
-  const d = targetP.subtract(rootP);
-  let dist = d.length();
-  const maxD = (L1+L2)*0.9985;
-  const minD = Math.abs(L1-L2)*1.02 + 0.012;
-  if (dist > maxD) dist = maxD;
-  if (dist < minD) dist = minD;
-  const dir = d.clone();
-  if (dir.lengthSquared() < 1e-9) dir.set(0,-1,0);
-  dir.normalize();
-  const cosA = (L1*L1 + dist*dist - L2*L2)/(2*L1*dist);
-  const a = Math.acos(clamp(cosA,-1,1));
-  let n = V3.Cross(dir, poleDir);
-  if (n.lengthSquared() < 1e-7) n = V3.Cross(dir, new V3(1,0,0));
-  if (n.lengthSquared() < 1e-7) n = V3.Cross(dir, new V3(0,0,1));
-  n.normalize();
-  const u = V3.Cross(n, dir);
-  u.normalize();
-  const b1 = dir.scale(Math.cos(a)).add(u.scale(Math.sin(a)));
-  const knee = rootP.add(b1.scale(L1));
-  const b2 = targetP.subtract(knee);
-  if (b2.lengthSquared() < 1e-9) b2.copyFrom(dir);
-  b2.normalize();
-  return { b1, b2, knee };
-}
-/* Установить ориентацию кости по мировому направлению */
-function setBoneDir(node, worldDir){
-  const parentQ = node.parent ? worldQuat(node.parent) : QT.Identity();
-  const wq = quatFromDir(worldDir);
-  node.rotationQuaternion = QT.Inverse(parentQ).multiply(wq);
-}
-/* Отслеживание попадания: отрезок (свип) против сферы */
-function segmentSphere(p0, p1, center, radius){
-  const d = p1.subtract(p0);
-  const f = p0.subtract(center);
-  const a = V3.Dot(d,d);
-  if (a < 1e-9) return V3.Distance(p0,center) <= radius;
-  const b = 2*V3.Dot(f,d);
-  const c = V3.Dot(f,f) - radius*radius;
-  let disc = b*b - 4*a*c;
-  if (disc < 0) return false;
-  disc = Math.sqrt(disc);
-  const t1 = (-b - disc)/(2*a);
-  const t2 = (-b + disc)/(2*a);
-  return (t1 >= 0 && t1 <= 1) || (t2 >= 0 && t2 <= 1) || (t1 < 0 && t2 > 1);
-}
-
-/* ======================= Сохранение ======================= */
-const SaveManager = {
-  KEY: 'apexring_v1',
-  data: null,
-  defaults(){
-    return {
-      settings: {
-        quality:'auto', renderScale:1.0, shadows:true, antialias:true,
-        drawDistance:1.0, crowd:true, postfx:true, fpsLimit:0,
-        volumeMaster:0.8, volumeFx:0.9, volumeCrowd:0.55, volumeUI:0.7,
-        showFps:true, showMiniStats:true, touchOpacity:0.9
-      },
-      keys: { up:'KeyW', down:'KeyS', left:'KeyA', right:'KeyD',
-        jab:'KeyJ', cross:'KeyK', hookL:'KeyU', hookR:'KeyI',
-        uppercutL:'KeyO', uppercutR:'KeyP',
-        block:'KeyR', blockL:'KeyQ', blockR:'KeyE',
-        dodgeL:'KeyZ', dodgeR:'KeyX', dodgeBack:'KeyC',
-        sprint:'ShiftLeft', pause:'Tab' },
-      profile: { fighter:'krutov', opponent:'orlov', rounds:3, roundTime:180, aiStyle:'technical', aiDiff:1 },
-      stats: { fights:0, wins:0, losses:0, draws:0, landed:0, thrown:0, blocked:0, history:[] }
-    };
-  },
-  load(){
-    try {
-      const raw = localStorage.getItem(this.KEY);
-      if (!raw) { this.data = this.defaults(); return this.data; }
-      const parsed = JSON.parse(raw);
-      const def = this.defaults();
-      this.data = {
-        settings: Object.assign(def.settings, parsed.settings||{}),
-        keys: Object.assign(def.keys, parsed.keys||{}),
-        profile: Object.assign(def.profile, parsed.profile||{}),
-        stats: Object.assign(def.stats, parsed.stats||{})
-      };
-    } catch(e){ this.data = this.defaults(); }
-    return this.data;
-  },
-  save(){
-    try { localStorage.setItem(this.KEY, JSON.stringify(this.data)); }
-    catch(e){ /* хранилище недоступно — игра продолжает работать */ }
-  }
-};
-SaveManager.load();
-
-/* ======================= Звук (Web Audio, синтез) ======================= */
-class AudioManager {
-  constructor(){
-    this.ctx = null; this.master = null; this.fxGain = null; this.crowdGain = null; this.uiGain = null;
-    this.crowdSrc = null; this.enabled = false;
-  }
-  init(){
-    if (this.ctx) return;
-    try {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return;
-      this.ctx = new AC();
-      this.master = this.ctx.createGain();
-      this.master.connect(this.ctx.destination);
-      this.fxGain = this.ctx.createGain(); this.fxGain.connect(this.master);
-      this.crowdGain = this.ctx.createGain(); this.crowdGain.connect(this.master);
-      this.uiGain = this.ctx.createGain(); this.uiGain.connect(this.master);
-      this.applyVolumes();
-      this.startCrowd();
-      this.enabled = true;
-    } catch(e){ this.enabled = false; }
-  }
-  resume(){ if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); }
-  applyVolumes(){
-    if (!this.ctx) return;
-    const s = SaveManager.data.settings;
-    this.master.gain.value = s.volumeMaster;
-    this.fxGain.gain.value = s.volumeFx;
-    this.crowdGain.gain.value = s.volumeCrowd * 0.35;
-    this.uiGain.gain.value = s.volumeUI;
-  }
-  noiseBuffer(dur){
-    const n = Math.floor(this.ctx.sampleRate * dur);
-    const buf = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i=0;i<n;i++) d[i] = Math.random()*2-1;
-    return buf;
-  }
-  startCrowd(){
-    if (!this.ctx) return;
-    const dur = 2.0;
-    const buf = this.noiseBuffer(dur);
-    const src = this.ctx.createBufferSource();
-    src.buffer = buf; src.loop = true;
-    const lp = this.ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=780; lp.Q.value=0.6;
-    const hp = this.ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=180;
-    const g = this.ctx.createGain(); g.gain.value = 0.5;
-    const lfo = this.ctx.createOscillator(); lfo.frequency.value = 0.14;
-    const lfoG = this.ctx.createGain(); lfoG.gain.value = 0.22;
-    lfo.connect(lfoG); lfoG.connect(g.gain); lfo.start();
-    src.connect(hp); hp.connect(lp); lp.connect(g); g.connect(this.crowdGain);
-    src.start();
-    this.crowdSrc = g;
-  }
-  crowdPulse(amount){
-    if (!this.enabled || !this.crowdSrc) return;
-    const t = this.ctx.currentTime;
-    const v = this.crowdSrc.gain.value;
-    this.crowdSrc.gain.cancelScheduledValues(t);
-    this.crowdSrc.gain.setValueAtTime(v, t);
-    this.crowdSrc.gain.linearRampToValueAtTime(Math.min(1.8, v + amount), t + 0.05);
-    this.crowdSrc.gain.exponentialRampToValueAtTime(0.45, t + 1.4);
-  }
-  /* Удар по цели */
-  hit(power, blocked){
-    if (!this.enabled) return;
-    const t = this.ctx.currentTime;
-    const vol = clamp(power, 0.15, 1.4);
-    // шумовой удар
-    const src = this.ctx.createBufferSource();
-    src.buffer = this.noiseBuffer(0.16);
-    const bp = this.ctx.createBiquadFilter();
-    bp.type = 'bandpass';
-    bp.frequency.value = blocked ? 2100 : 1250;
-    bp.Q.value = blocked ? 1.5 : 0.9;
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(blocked ? 0.30*vol : 0.55*vol, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + (blocked?0.09:0.15));
-    src.connect(bp); bp.connect(g); g.connect(this.fxGain);
-    src.start(t); src.stop(t+0.18);
-    // низкочастотный "тум"
-    if (!blocked){
-      const o = this.ctx.createOscillator();
-      o.type = 'sine'; o.frequency.setValueAtTime(120*vol, t);
-      o.frequency.exponentialRampToValueAtTime(48, t+0.14);
-      const og = this.ctx.createGain();
-      og.gain.setValueAtTime(0.42*vol, t);
-      og.gain.exponentialRampToValueAtTime(0.001, t+0.20);
-      o.connect(og); og.connect(this.fxGain);
-      o.start(t); o.stop(t+0.22);
-    }
-  }
-  whoosh(){
-    if (!this.enabled) return;
-    const t = this.ctx.currentTime;
-    const src = this.ctx.createBufferSource();
-    src.buffer = this.noiseBuffer(0.16);
-    const bp = this.ctx.createBiquadFilter();
-    bp.type='bandpass'; bp.frequency.setValueAtTime(600,t);
-    bp.frequency.exponentialRampToValueAtTime(1900,t+0.12); bp.Q.value=2.4;
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.11,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.15);
-    src.connect(bp); bp.connect(g); g.connect(this.fxGain);
-    src.start(t); src.stop(t+0.17);
-  }
-  step(){
-    if (!this.enabled) return;
-    const t = this.ctx.currentTime;
-    const src = this.ctx.createBufferSource();
-    src.buffer = this.noiseBuffer(0.07);
-    const lp = this.ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=520;
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.14, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.07);
-    src.connect(lp); lp.connect(g); g.connect(this.fxGain);
-    src.start(t); src.stop(t+0.09);
-  }
-  gong(){
-    if (!this.enabled) return;
-    const t = this.ctx.currentTime;
-    const partials = [1, 2.02, 2.98, 4.15, 5.43, 6.79];
-    const base = 168;
-    for (let i=0;i<partials.length;i++){
-      const o = this.ctx.createOscillator();
-      o.type='sine'; o.frequency.value = base*partials[i];
-      const g = this.ctx.createGain();
-      const amp = 0.24/(1+i*0.85);
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(amp, t+0.008);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 2.4/(1+i*0.4));
-      o.connect(g); g.connect(this.fxGain);
-      o.start(t); o.stop(t+2.8);
-    }
-    this.crowdPulse(0.5);
-  }
-  ui(){
-    if (!this.enabled) return;
-    const t = this.ctx.currentTime;
-    const o = this.ctx.createOscillator();
-    o.type='triangle'; o.frequency.setValueAtTime(680, t);
-    o.frequency.exponentialRampToValueAtTime(430, t+0.07);
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.10, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.09);
-    o.connect(g); g.connect(this.uiGain);
-    o.start(t); o.stop(t+0.11);
-  }
-  breathe(hard){
-    if (!this.enabled) return;
-    const t = this.ctx.currentTime;
-    const src = this.ctx.createBufferSource();
-    src.buffer = this.noiseBuffer(0.22);
-    const bp = this.ctx.createBiquadFilter(); bp.type='bandpass';
-    bp.frequency.value = hard ? 640 : 380; bp.Q.value = 0.8;
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.001,t);
-    g.gain.linearRampToValueAtTime(hard?0.075:0.035, t+0.07);
-    g.gain.exponentialRampToValueAtTime(0.001, t+0.24);
-    src.connect(bp); bp.connect(g); g.connect(this.fxGain);
-    src.start(t); src.stop(t+0.26);
-  }
-}
-
-/* ======================= Материалы и процедурная графика ======================= */
-function makeMat(scene, name, hex, opts){
-  const m = new BABYLON.PBRMaterial(name, scene);
-  const c = BABYLON.Color3.FromHexString(hexToStr(hex));
-  m.albedoColor = c;
-  m.metallic = opts && opts.metal !== undefined ? opts.metal : 0.04;
-  m.roughness = opts && opts.rough !== undefined ? opts.rough : 0.62;
-  if (opts && opts.emissive !== undefined) m.emissiveColor = c.scale(opts.emissive);
-  return m;
-}
-function hexToStr(h){ return '#' + h.toString(16).padStart(6,'0'); }
-
-/* ======================= Построение ринга и арены ======================= */
-class RingController {
-  constructor(scene){
-    this.scene = scene;
-    this.build();
-  }
-  build(){
-    const s = this.scene;
-    const H = CFG.ring.half;
-
-    // --- подиум ---
-    const apronMat = makeMat(s,'apron',0x14161a,{rough:0.85});
-    const apron = BABYLON.MeshBuilder.CreateBox('apron',{width:H*2+1.6,height:0.85,depth:H*2+1.6},s);
-    apron.position.y = -0.435;
-    apron.material = apronMat;
-    apron.receiveShadows = true;
-
-    // --- настил ринга ---
-    const canvasMat = makeMat(s,'canvasMat',0xc9c4bb,{rough:0.90});
-    const floor = BABYLON.MeshBuilder.CreateBox('ringFloor',{width:H*2,height:0.09,depth:H*2},s);
-    floor.position.y = -0.045;
-    floor.material = canvasMat;
-    floor.receiveShadows = true;
-
-    // лёгкая разметка (тёмная окантовка)
-    const trimMat = makeMat(s,'ringTrim',0x2b2f36,{rough:0.7});
-    const trim = BABYLON.MeshBuilder.CreateBox('ringTrim',{width:H*2+0.1,height:0.095,depth:H*2+0.1},s);
-    trim.position.y = -0.052;
-    trim.material = trimMat;
-
-    // --- угловые стойки ---
-    const postMat = makeMat(s,'postMat',0x9aa0aa,{metal:0.85,rough:0.30});
-    const padMats = [
-      makeMat(s,'padRed',0x8e1f18,{rough:0.7}),
-      makeMat(s,'padBlue',0x1f3a6e,{rough:0.7}),
-      makeMat(s,'padWhite',0xd8dade,{rough:0.7}),
-      makeMat(s,'padWhite2',0xd8dade,{rough:0.7})
-    ];
-    this.posts = [];
-    const corners = [[-H,-H],[H,-H],[H,H],[-H,H]];
-    for (let i=0;i<4;i++){
-      const [x,z] = corners[i];
-      const pad = BABYLON.MeshBuilder.CreateCylinder('postPad'+i,{height:1.35,diameter:0.145,tessellation:14},s);
-      pad.position.set(x,0.675,z); pad.material = padMats[i];
-      const post = BABYLON.MeshBuilder.CreateCylinder('post'+i,{height:CFG.ring.postH,diameter:0.075,tessellation:12},s);
-      post.position.set(x,CFG.ring.postH/2,z); post.material = postMat;
-      this.posts.push({x,z});
-    }
-
-    // --- канаты (с легким провисом) ---
-    const ropeMats = [
-      makeMat(s,'rope0',0xd6d8dd,{rough:0.45,metal:0.05}),
-      makeMat(s,'rope1',0xc0392b,{rough:0.5}),
-      makeMat(s,'rope2',0xd6d8dd,{rough:0.45,metal:0.05})
-    ];
-    const sides = [
-      { a:[-H,-H], b:[ H,-H] },
-      { a:[ H,-H], b:[ H, H] },
-      { a:[ H, H], b:[-H, H] },
-      { a:[-H, H], b:[-H,-H] }
-    ];
-    for (let r=0;r<CFG.ring.ropes.length;r++){
-      const y = CFG.ring.ropes[r];
-      for (let si=0; si<4; si++){
-        const sd = sides[si];
-        const pts = [];
-        const segs = 6;
-        for (let k=0;k<=segs;k++){
-          const t = k/segs;
-          const x = lerp(sd.a[0], sd.b[0], t);
-          const z = lerp(sd.a[1], sd.b[1], t);
-          const sag = Math.sin(t*Math.PI) * 0.028 * (r===0?1.35:(r===1?1.0:0.75));
-          pts.push(new V3(x, y - sag, z));
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.35);
+                } catch (e) {
+                    // Ignore audio errors
+                }
+            }
         }
-        const tube = BABYLON.MeshBuilder.CreateTube('rope_'+r+'_'+si,{path:pts,radius:CFG.ring.ropeR,tessellation:8,cap:BABYLON.Mesh.CAP_ALL},s);
-        tube.material = ropeMats[r];
-      }
-      // натяжители в углах
-      for (let ci=0;ci<4;ci++){
-        const c = this.posts[ci];
-        const tb = BABYLON.MeshBuilder.CreateCylinder('turnbuckle'+r+'_'+ci,{height:0.085,diameter:0.052,tessellation:10},s);
-        tb.rotation.z = Math.PI/2;
-        tb.position.set(c.x, y, c.z);
-        tb.material = postMat;
-      }
-    }
 
-    // --- нижняя юбка подиума (ткань) ---
-    const skirtMat = makeMat(s,'skirt',0x191c22,{rough:0.95});
-    const skirt = BABYLON.MeshBuilder.CreateBox('skirt',{width:H*2+1.65,height:0.35,depth:H*2+1.65},s);
-    skirt.position.y = -0.72;
-    skirt.material = skirtMat;
-
-    // --- пол арены вокруг ринга ---
-    const arenaMat = makeMat(s,'arenaFloor',0x0e1014,{rough:0.92});
-    const arena = BABYLON.MeshBuilder.CreateGround('arenaFloor',{width:46,height:46},s);
-    arena.position.y = -0.86;
-    arena.material = arenaMat;
-
-    // --- трибуны и массовка ---
-    this.buildCrowd(s);
-
-    // --- ферма освещения ---
-    this.buildLightRig(s);
-  }
-  buildCrowd(scene){
-    const H = CFG.ring.half;
-    const bodyMats = [
-      makeMat(scene,'crowdA',0x14161c,{rough:0.95}),
-      makeMat(scene,'crowdB',0x1c1f27,{rough:0.95}),
-      makeMat(scene,'crowdC',0x232730,{rough:0.95}),
-      makeMat(scene,'crowdD',0x101218,{rough:0.95})
-    ];
-    const headMat = makeMat(scene,'crowdHead',0x6a5a4c,{rough:0.9});
-    const count = 420;
-    const box = BABYLON.MeshBuilder.CreateBox('crowdBody',{width:0.42,height:0.62,depth:0.30},scene);
-    box.material = bodyMats[0];
-    const head = BABYLON.MeshBuilder.CreateSphere('crowdHeadM',{diameter:0.22,segments:6},scene);
-    head.material = headMat;
-    box.isVisible = true;
-    let made = 0;
-    this.crowdAnimated = [];
-    for (let i=0;i<count;i++){
-      const tier = Math.floor(i/140);
-      const ang = rand(0, Math.PI*2);
-      const r = 5.6 + tier*2.4 + rand(0, 1.4);
-      const y = -0.86 + 0.42 + tier*0.72 + rand(-0.05,0.05);
-      const x = Math.cos(ang)*r, z = Math.sin(ang)*r;
-      if (Math.abs(x) < H+1.2 && Math.abs(z) < H+1.2) continue;
-      const inst = box.createInstance('cb'+i);
-      inst.position.set(x,y,z);
-      inst.rotation.y = ang + Math.PI;
-      inst.scaling.set(rand(0.85,1.1), rand(0.9,1.15), rand(0.85,1.1));
-      inst.material = bodyMats[i%4];
-      inst.isPickable = false;
-      const hinst = head.createInstance('ch'+i);
-      hinst.parent = inst;
-      hinst.position.set(0,0.44,0);
-      hinst.isPickable = false;
-      if (i < 60) this.crowdAnimated.push({inst, base:y, ph: rand(0,6.28), amp: rand(0.01,0.035)});
-      made++;
-    }
-    this.crowdRoot = box;
-    box.setEnabled(true);
-  }
-  buildLightRig(scene){
-    const H = CFG.ring.half;
-    const trussMat = makeMat(scene,'truss',0x2a2d34,{metal:0.8,rough:0.4});
-    // ферма
-    for (let i=0;i<4;i++){
-      const ang = i*Math.PI/2;
-      const t = BABYLON.MeshBuilder.CreateBox('truss'+i,{width:9.0,height:0.16,depth:0.16},scene);
-      t.position.set(Math.cos(ang)*0, 5.6, Math.sin(ang)*0);
-      t.rotation.y = ang;
-      t.material = trussMat;
-    }
-    const cross1 = BABYLON.MeshBuilder.CreateBox('trussX',{width:9.4,height:0.16,depth:0.16},scene);
-    cross1.position.y = 5.6; cross1.material = trussMat;
-    const cross2 = BABYLON.MeshBuilder.CreateBox('trussZ',{width:0.16,height:0.16,depth:9.4},scene);
-    cross2.position.y = 5.6; cross2.material = trussMat;
-
-    // прожекторы
-    const lampMat = makeMat(scene,'lampBody',0x14161a,{metal:0.7,rough:0.35});
-    const lensMat = makeMat(scene,'lens',0xfff3d6,{emissive:1.0,rough:0.15});
-    for (let i=0;i<4;i++){
-      const ang = (i/4)*Math.PI*2 + Math.PI/4;
-      const x = Math.cos(ang)*(H*0.62), z = Math.sin(ang)*(H*0.62);
-      const lamp = BABYLON.MeshBuilder.CreateCylinder('lamp'+i,{height:0.42,diameterTop:0.20,diameterBottom:0.52,tessellation:16},scene);
-      lamp.position.set(x,5.35,z);
-      lamp.rotation.x = Math.PI;
-      lamp.material = lampMat;
-      const lens = BABYLON.MeshBuilder.CreateDisc('lens'+i,{radius:0.24,tessellation:16},scene);
-      lens.position.set(x,5.13,z);
-      lens.rotation.x = -Math.PI/2;
-      lens.material = lensMat;
-    }
-  }
-  clampPosition(pos, radius){
-    const H = CFG.ring.half - CFG.combat.ringMargin - radius*0.2;
-    let hitRopes = false;
-    if (pos.x < -H){ pos.x = -H; hitRopes = true; }
-    if (pos.x >  H){ pos.x =  H; hitRopes = true; }
-    if (pos.z < -H){ pos.z = -H; hitRopes = true; }
-    if (pos.z >  H){ pos.z =  H; hitRopes = true; }
-    return hitRopes;
-  }
-  update(dt){
-    if (!this.crowdAnimated) return;
-    for (const c of this.crowdAnimated){
-      c.inst.position.y = c.base + Math.sin(performance.now()*0.0016 + c.ph)*c.amp;
-    }
-  }
-}
-
-/* ======================= Скелет и процедурные модели ======================= */
-class FighterRig {
-  constructor(scene, def, opts){
-    this.scene = scene;
-    this.def = def;
-    this.opts = opts || {};
-    this.nodes = {};
-    this.meshes = [];
-    this.buildMaterials();
-    this.build();
-  }
-
-  buildMaterials(){
-    const d = this.def;
-    this.mSkin   = makeMat(this.scene,'skin_'+d.id, d.skin, {rough:0.52, metal:0.0});
-    this.mShorts = makeMat(this.scene,'shorts_'+d.id, d.shorts, {rough:0.78});
-    this.mGlove  = makeMat(this.scene,'glove_'+d.id, d.glove, {rough:0.42});
-    this.mTrim   = makeMat(this.scene,'trim_'+d.id, d.trim, {rough:0.5});
-    this.mWrap   = makeMat(this.scene,'wrap_'+d.id, 0xe8e5dd, {rough:0.85});
-    this.mBoot   = makeMat(this.scene,'boot_'+d.id, 0x111318, {rough:0.55});
-    this.mDark   = makeMat(this.scene,'dark_'+d.id, 0x0a0b0e, {rough:0.6});
-  }
-
-  mk(name, parent, x, y, z){
-    const n = new BABYLON.TransformNode(name, this.scene);
-    n.parent = parent;
-    n.position.set(x,y,z);
-    n.rotationQuaternion = QT.Identity();
-    this.nodes[name] = n;
-    return n;
-  }
-
-  /* Капсула вдоль локальной оси -Y от узла */
-  capsule(parent, name, len, r, mat){
-    const mesh = BABYLON.MeshBuilder.CreateCapsule(name, { height: Math.max(0.02, len - r*1.55), radius: r, tessellation: 12, subdivisions: 1 }, this.scene);
-    mesh.parent = parent;
-    mesh.position.y = -len/2;
-    mesh.material = mat;
-    mesh.receiveShadows = true;
-    this.meshes.push(mesh);
-    return mesh;
-  }
-
-  sphere(parent, name, x,y,z, sx,sy,sz, mat, seg){
-    const mesh = BABYLON.MeshBuilder.CreateSphere(name, {diameter:1, segments: seg||12}, this.scene);
-    mesh.parent = parent;
-    mesh.position.set(x,y,z);
-    mesh.scaling.set(sx,sy,sz);
-    mesh.material = mat;
-    mesh.receiveShadows = true;
-    this.meshes.push(mesh);
-    return mesh;
-  }
-
-  box(parent, name, x,y,z, w,h,d, mat, rotX){
-    const mesh = BABYLON.MeshBuilder.CreateBox(name, {width:w,height:h,depth:d}, this.scene);
-    mesh.parent = parent;
-    mesh.position.set(x,y,z);
-    if (rotX) mesh.rotation.x = rotX;
-    mesh.material = mat;
-    mesh.receiveShadows = true;
-    this.meshes.push(mesh);
-    return mesh;
-  }
-
-  build(){
-    const B = CFG.body;
-    const scaleH = this.def.height / 1.85;   // масштаб по росту
-    this.scaleH = scaleH;
-
-    // корень
-    const root = this.mk('root', null, 0, 0, 0);
-    this.root = root;
-
-    // таз
-    const pelvis = this.mk('pelvis', root, 0, B.pelvisY, 0);
-    // визуал таза
-    this.sphere(pelvis, 'pelvisMesh', 0, -0.02, 0, 0.315, 0.235, 0.215, this.mShorts, 12);
-    // шорты (юбка)
-    const shorts = BABYLON.MeshBuilder.CreateCylinder('shortsM', {height:0.30, diameterTop:0.34, diameterBottom:0.40, tessellation:14}, this.scene);
-    shorts.parent = pelvis; shorts.position.y = -0.14; shorts.material = this.mShorts;
-    this.meshes.push(shorts);
-
-    // позвоночник
-    const spineLow = this.mk('spineLow', pelvis, 0, 0.09, 0);
-    this.sphere(spineLow, 'abdomen', 0, 0.045, 0, 0.30, 0.24, 0.21, this.mSkin, 12);
-    const spineMid = this.mk('spineMid', spineLow, 0, B.spineLow, 0);
-    const chest = this.mk('chest', spineMid, 0, B.spineMid, 0);
-    this.sphere(chest, 'chestMesh', 0, 0.075, 0.005, 0.375, 0.315, 0.245, this.mSkin, 14);
-    // грудные мышцы
-    this.sphere(chest, 'pecL', -0.085, 0.10, 0.10, 0.17, 0.13, 0.10, this.mSkin, 10);
-    this.sphere(chest, 'pecR',  0.085, 0.10, 0.10, 0.17, 0.13, 0.10, this.mSkin, 10);
-
-    // шея и голова
-    const neck = this.mk('neck', chest, 0, B.chestLen*0.98, 0.005);
-    const neckMesh = BABYLON.MeshBuilder.CreateCylinder('neckMesh',{height:B.neckLen*1.4, diameterTop:0.105, diameterBottom:0.135, tessellation:12}, this.scene);
-    neckMesh.parent = neck; neckMesh.position.y = B.neckLen*0.35; neckMesh.material = this.mSkin;
-    this.meshes.push(neckMesh);
-    const head = this.mk('head', neck, 0, B.neckLen, 0.012);
-    this.sphere(head, 'headMesh', 0, 0.055, -0.008, 0.205, 0.255, 0.225, this.mSkin, 14);
-    // челюсть
-    this.sphere(head, 'jaw', 0, -0.015, 0.035, 0.155, 0.115, 0.145, this.mSkin, 10);
-    // волосы / шапочка
-    this.sphere(head, 'hair', 0, 0.115, -0.02, 0.20, 0.14, 0.215, this.mDark, 12);
-
-    // плечи и руки
-    const arms = {};
-    for (const side of ['L','R']){
-      const sgn = side === 'L' ? -1 : 1;
-      const sh = this.mk('shoulder'+side, chest, sgn*B.shoulderSpread, B.shoulderY, 0);
-      // дельта
-      this.sphere(sh, 'delt'+side, 0, 0.0, 0, 0.165, 0.165, 0.165, this.mSkin, 12);
-      const ua = this.mk('upperArm'+side, sh, 0, -0.035, 0);
-      this.capsule(ua, 'uaMesh'+side, B.upperArm, 0.062, this.mSkin);
-      const fa = this.mk('foreArm'+side, ua, 0, -B.upperArm, 0);
-      this.capsule(fa, 'faMesh'+side, B.foreArm, 0.052, this.mSkin);
-      // бинт
-      const wrap = BABYLON.MeshBuilder.CreateCylinder('wrap'+side,{height:0.10,diameter:0.115,tessellation:12}, this.scene);
-      wrap.parent = fa; wrap.position.y = -B.foreArm + 0.03; wrap.material = this.mWrap;
-      this.meshes.push(wrap);
-      const hand = this.mk('hand'+side, fa, 0, -B.foreArm, 0);
-      // перчатка
-      const glove = this.sphere(hand, 'glove'+side, 0, -0.055, 0.015, 0.215, 0.225, 0.235, this.mGlove, 12);
-      // большой палец перчатки
-      this.sphere(hand, 'thumb'+side, sgn*0.075, -0.045, 0.06, 0.085, 0.095, 0.085, this.mGlove, 8);
-      // манжета
-      const cuff = BABYLON.MeshBuilder.CreateCylinder('cuff'+side,{height:0.085,diameter:0.155,tessellation:12}, this.scene);
-      cuff.parent = hand; cuff.position.y = 0.035; cuff.material = this.mTrim;
-      this.meshes.push(cuff);
-      arms[side] = { sh, ua, fa, hand, glove };
-    }
-    this.arms = arms;
-
-    // ноги (дочерние к корню — ступни позиционируются независимо)
-    const legs = {};
-    for (const side of ['L','R']){
-      const sgn = side === 'L' ? -1 : 1;
-      const hip = this.mk('hip'+side, root, sgn*B.hipSpread, B.pelvisY - B.hipDrop, 0);
-      this.sphere(hip, 'hipMesh'+side, 0, 0.01, 0, 0.155, 0.155, 0.16, this.mSkin, 10);
-      const th = this.mk('thigh'+side, hip, 0, -0.03, 0);
-      this.capsule(th, 'thighMesh'+side, B.thigh, 0.088, this.mSkin);
-      const sn = this.mk('shin'+side, th, 0, -B.thigh, 0);
-      this.capsule(sn, 'shinMesh'+side, B.shin, 0.062, this.mSkin);
-      const ft = this.mk('foot'+side, sn, 0, -B.shin, 0);
-      // ступня
-      const boot = BABYLON.MeshBuilder.CreateBox('boot'+side, {width:B.footW, height:0.085, depth:B.footLen}, this.scene);
-      boot.parent = ft;
-      boot.position.set(0, -0.045, 0.055);
-      boot.material = this.mBoot;
-      this.meshes.push(boot);
-      // носок
-      this.sphere(ft, 'toe'+side, 0, -0.055, 0.175, 0.10, 0.07, 0.075, this.mBoot, 8);
-      legs[side] = { hip, thigh: th, shin: sn, foot: ft };
-    }
-    this.legs = legs;
-
-    // Хитбоксы-маркеры (для отладочного отображения)
-    this.debugHit = [];
-    const mkDbg = (name, color) => {
-      const m = BABYLON.MeshBuilder.CreateSphere('dbg_'+name+'_'+this.def.id, {diameter:1, segments:8}, this.scene);
-      m.material = makeMat(this.scene,'dbgMat_'+name+'_'+this.def.id, color, {emissive:0.7, rough:0.5});
-      m.isVisible = false; m.isPickable = false;
-      return m;
-    };
-    this.hbHead = mkDbg('head', 0x33ff88);
-    this.hbBody = mkDbg('body', 0xffcc33);
-    this.hbGloveL = mkDbg('glL', 0xff5566);
-    this.hbGloveR = mkDbg('glR', 0xff5566);
-    this.debugHit = [this.hbHead, this.hbBody, this.hbGloveL, this.hbGloveR];
-
-    // Маркер следа перчатки
-    this.trailDotsL = []; this.trailDotsR = [];
-    for (let i=0;i<10;i++){
-      for (const side of ['L','R']){
-        const d = BABYLON.MeshBuilder.CreateSphere('trail_'+side+'_'+i, {diameter:0.045, segments:6}, this.scene);
-        d.material = makeMat(this.scene,'trailMat', side==='L'?0x66ccff:0xffaa44, {emissive:0.9, rough:0.4});
-        d.isVisible = false; d.isPickable = false;
-        (side==='L'?this.trailDotsL:this.trailDotsR).push({mesh:d, pos:null, life:0});
-      }
-    }
-
-    this.applyStaticScaling();
-  }
-
-  applyStaticScaling(){
-    // Масштабируем всю модель по росту (общий масштаб корня по Y не годится —
-    // корректируем длины костей множителем через позиции дочерних узлов)
-    const k = this.scaleH;
-    if (Math.abs(k - 1) < 0.001) return;
-    for (const key of ['pelvis']){
-      const n = this.nodes[key];
-      if (n) n.position.y *= k;
-    }
-    for (const key of ['hipL','hipR']){
-      const n = this.nodes[key];
-      if (n){ n.position.y *= k; n.position.x *= k; }
-    }
-    for (const key of ['spineLow','spineMid','chest','neck','head']){
-      const n = this.nodes[key];
-      if (n) n.position.y *= k;
-    }
-    for (const key of ['shoulderL','shoulderR']){
-      const n = this.nodes[key];
-      if (n){ n.position.y *= k; n.position.x *= k; }
-    }
-    for (const side of ['L','R']){
-      const ua = this.nodes['upperArm'+side], fa = this.nodes['foreArm'+side], ha = this.nodes['hand'+side];
-      if (ua) ua.position.y *= k;
-      if (fa) fa.position.y *= k;
-      if (ha) ha.position.y *= k;
-      const th = this.nodes['thigh'+side], sn = this.nodes['shin'+side];
-      if (th) th.position.y *= k;
-      if (sn) sn.position.y *= k;
-    }
-    this.scaleK = k;
-  }
-
-  setPoseVisible(v){
-    this.debugHit.forEach(m => m.isVisible = v);
-  }
-}
-
-/* ======================= Система бойца ======================= */
-class FighterController {
-  constructor(scene, rig, def, isPlayer){
-    this.scene = scene;
-    this.rig = rig;
-    this.def = def;
-    this.isPlayer = !!isPlayer;
-    this.orthodox = def.orthodox !== false;
-    this.mirror = this.orthodox ? 1 : -1;
-
-    // Мировые параметры
-    this.root = rig.root;
-    this.position = new V3(0,0,0);
-    this.yaw = 0;                       // ориентация (радианы)
-    this.desiredYaw = 0;
-
-    // Состояние
-    this.stamina = 1.0;
-    this.health = 1.0;
-    this.headHealth = 1.0;
-    this.bodyHealth = 1.0;
-    this.legHealth = 1.0;
-    this.fatigueArms = 0;
-    this.fatigueLegs = 0;
-    this.fatigueCore = 0;
-
-    // Движение
-    this.velocity = new V3(0,0,0);
-    this.moveInput = new V3(0,0,0);
-
-    // Стойки и цели
-    this.stanceBlend = 1;
-    this.breathPhase = rand(0, Math.PI*2);
-    this.microPhase = rand(0, Math.PI*2);
-
-    // Ноги — цели в локальном пространстве корня
-    this.footL = { target: new V3(0,0,0), ground: new V3(0,0,0), lift: 0, yaw: 0.18*mirrorSign(this), heel: 0, planted: true, step: null };
-    this.footR = { target: new V3(0,0,0), ground: new V3(0,0,0), lift: 0, yaw: 0.62*mirrorSign(this), heel: 0, planted: true, step: null };
-
-    // Удары
-    this.punch = null;                  // { key, t, def, hit, phase, hand }
-    this.punchCooldown = 0;
-    this.comboBuffer = [];
-
-    // Защита
-    this.blockL = 0; this.blockR = 0; this.blockBody = 0;
-    this.dodge = 0; this.dodgeDir = 0;
-    this.hitStun = 0;
-    this.recoil = 0;
-
-    // Цели рук (в локальном пространстве корня)
-    this.handTargetL = new V3(-0.13, 1.48, 0.24);
-    this.handTargetR = new V3( 0.08, 1.50, 0.12);
-
-    // Сглаженное положение
-    this._smFootL = new V3(); this._smFootR = new V3();
-
-    // Статистика
-    this.stats = { thrown:0, landed:0, missed:0, blocked:0, damageDealt:0, damageTaken:0, blockedIncoming:0 };
-
-    // Для интерполяции
-    this.lastPunchPos = null;
-
-    this.initFeetTargets();
-  }
-
-  initFeetTargets(){
-    const m = this.mirror;
-    // Ортодокс: левая нога впереди (+Z), правая сзади (-Z)
-    // Саутпо: правая впереди
-    const front = this.orthodox ? 'L' : 'R';
-    const back  = this.orthodox ? 'R' : 'L';
-    const fl = this.footL, fr = this.footR;
-    const set = (f, side, fz, fx, yaw) => {
-      f.ground.set(fx*this.mirror, 0, fz);
-      f.target.copyFrom(f.ground);
-      f.yaw = yaw*this.mirror;
-    };
-    // передняя нога — примерно по центру, чуть в сторону
-    set(fl, 'L', 0.245, -0.075, 0.18);
-    set(fr, 'R', -0.245, 0.105, 0.62);
-    if (!this.orthodox){
-      // саутпо: поменять местами
-      const tl = fl.ground.clone(), yl = fl.yaw;
-      fl.ground.copyFrom(fr.ground); fl.yaw = fr.yaw;
-      fr.ground.copyFrom(tl); fr.yaw = yl;
-      fl.target.copyFrom(fl.ground); fr.target.copyFrom(fr.ground);
-    }
-    this._smFootL.copyFrom(fl.target);
-    this._smFootR.copyFrom(fr.target);
-  }
-
-  resetFightState(startPos, yaw){
-    this.position.copyFrom(startPos);
-    this.yaw = yaw; this.desiredYaw = yaw;
-    this.velocity.set(0,0,0);
-    this.stamina = 1.0; this.health = 1.0;
-    this.headHealth = 1.0; this.bodyHealth = 1.0; this.legHealth = 1.0;
-    this.fatigueArms = 0; this.fatigueLegs = 0; this.fatigueCore = 0;
-    this.punch = null; this.punchCooldown = 0; this.comboBuffer.length = 0;
-    this.blockL = 0; this.blockR = 0; this.blockBody = 0;
-    this.dodge = 0; this.hitStun = 0; this.recoil = 0;
-    this.stats = { thrown:0, landed:0, missed:0, blocked:0, damageDealt:0, damageTaken:0, blockedIncoming:0 };
-    this.initFeetTargets();
-  }
-
-  get speedFactor(){
-    // усталость замедляет
-    return clamp(0.72 + 0.28*(1 - this.fatigueLegs*0.85) * (0.55 + 0.45*this.stamina), 0.45, 1.0);
-  }
-
-  /* ---------- Основная логика кадра ---------- */
-  update(dt, input, opponent){
-    this.opponent = opponent;
-    this.breathPhase += dt * (2.4 + this.stamina*1.4);
-    this.microPhase += dt * 1.1;
-
-    if (this.hitStun > 0) this.hitStun = Math.max(0, this.hitStun - dt);
-    if (this.recoil > 0) this.recoil = Math.max(0, this.recoil - dt*3.2);
-
-    this.handleMovement(dt, input, opponent);
-    this.handlePunch(dt, input, opponent);
-    this.handleDefense(dt, input);
-    this.updateStamina(dt);
-
-    // Поворот к сопернику с ограничением скорости
-    if (opponent){
-      const toOp = opponent.position.subtract(this.position);
-      toOp.y = 0;
-      if (toOp.lengthSquared() > 0.001){
-        const targetYaw = Math.atan2(toOp.x, toOp.z);
-        let diff = targetYaw - this.yaw;
-        while (diff > Math.PI) diff -= Math.PI*2;
-        while (diff < -Math.PI) diff += Math.PI*2;
-        const turnSpeed = (3.6 * this.speedFactor) * (this.punch ? 0.35 : 1);
-        this.yaw += clamp(diff, -turnSpeed*dt, turnSpeed*dt);
-      }
-    }
-
-    // Ограничение по рингу
-    const clamped = Ring.instance ? Ring.instance.clampPosition(this.position, 0.35) : false;
-    if (clamped && this.velocity.lengthSquared() > 0.01){
-      this.velocity.scaleInPlace(0.4);
-    }
-
-    this.applyPose(dt);
-  }
-
-  handleMovement(dt, input, opponent){
-    const mv = input.move; // {x, z} локальные (-1..1)
-    const spd = 1.55 * this.def.speed * this.speedFactor;
-    const sprint = input.sprint ? 1.42 : 1.0;
-
-    // Вектор движения в мировом пространстве (относительно ориентации корня)
-    const cos = Math.cos(this.yaw), sin = Math.sin(this.yaw);
-    const wx = mv.x*cos + mv.z*sin;
-    const wz = -mv.x*sin + mv.z*cos;
-
-    const wantV = new V3(wx, 0, wz);
-    const wl = wantV.length();
-    if (wl > 0.001) wantV.scaleInPlace((spd*sprint)/wl); else wantV.set(0,0,0);
-
-    // Разгон/торможение с участием ног
-    const accel = (wl > 0.001 ? 9.5 : 12.0) * (this.stamina*0.55 + 0.45);
-    const vx = this.velocity.x + clamp(wantV.x - this.velocity.x, -accel*dt, accel*dt);
-    const vz = this.velocity.z + clamp(wantV.z - this.velocity.z, -accel*dt, accel*dt);
-    this.velocity.set(vx, 0, vz);
-
-    // Нельзя двигаться быстро во время удара
-    if (this.punch) this.velocity.scaleInPlace(0.30);
-
-    this.position.addInPlace(this.velocity.scale(dt));
-
-    // Шаги ног
-    this.updateFootwork(dt, mv, wl);
-
-    // Расход выносливости от перемещения
-    if (wl > 0.1){
-      this.fatigueLegs = clamp(this.fatigueLegs + dt*0.030*(sprint>1?1.5:1), 0, 1);
-    } else {
-      this.fatigueLegs = clamp(this.fatigueLegs - dt*0.055, 0, 1);
-    }
-  }
-
-  updateFootwork(dt, mv, moveLen){
-    const m = this.mirror;
-    const fL = this.footL, fR = this.footR;
-    const stepPhase = performance.now()*0.001;
-
-    // Базовое расстояние между стопами (локальные цели, следуют за движением)
-    const leadZ = 0.235, backZ = -0.235;
-    const stanceWidth = 0.18;
-
-    // Проекция скорости на локальные оси
-    const cos = Math.cos(-this.yaw), sin = Math.sin(-this.yaw);
-    const lvx = this.velocity.x*cos - this.velocity.z*sin;
-    const lvz = this.velocity.x*sin + this.velocity.z*cos;
-
-    // Смещение "целевой базы" стоп в зависимости от скорости
-    const baseShiftZ = clamp(lvz * 0.11, -0.20, 0.20);
-    const baseShiftX = clamp(lvx * 0.08, -0.14, 0.14);
-
-    // Определяем ведущую/заднюю ногу
-    const frontIsL = this.orthodox;
-    const fFront = frontIsL ? fL : fR;
-    const fBack  = frontIsL ? fR : fL;
-
-    // Определяем, какая нога должна шагать: та, что дальше от целевого положения
-    const desiredFrontZ = leadZ*1.0 + baseShiftZ;
-    const desiredBackZ  = backZ*1.0 + baseShiftZ;
-
-    const frontSideX = (frontIsL ? -1 : 1) * stanceWidth;
-    const backSideX  = (frontIsL ? 1 : -1) * stanceWidth;
-
-    // Целевые точки в локальных координатах
-    const tFront = new V3(frontSideX*1.0 + baseShiftX, 0, desiredFrontZ);
-    const tBack  = new V3(backSideX*1.0 + baseShiftX, 0, desiredBackZ);
-
-    // Свободный шаг: если нога далеко от цели — начинаем шаг
-    const decideStep = (foot, target, isFront) => {
-      const cur = foot.target;
-      const d = Math.hypot(target.x - cur.x, target.z - cur.z);
-      if (foot.step){
-        // продолжаем шаг
-        foot.step.t += dt / foot.step.dur;
-        if (foot.step.t >= 1){
-          foot.target.copyFrom(foot.step.to);
-          foot.step = null;
-          foot.lift = 0;
-        } else {
-          const t = smoothstep(foot.step.t);
-          foot.target.x = lerp(foot.step.from.x, foot.step.to.x, t);
-          foot.target.z = lerp(foot.step.from.z, foot.step.to.z, t);
-          foot.lift = Math.sin(foot.step.t*Math.PI) * foot.step.height;
+        /**
+         * HAPTIC FEEDBACK SYSTEM
+         * NOTE ON iOS SAFARI HAPTIC LIMITATIONS:
+         * Standard Apple Mobile Safari strictly restricts tactile/haptic vibrations via JavaScript inside ordinary web pages.
+         * The standard `navigator.vibrate()` API is disabled on iOS Safari.
+         * Advanced Haptics (UIFeedbackGenerator) are ONLY exposed inside WebViews (WkWebView) or PWAs installed to Home Screen on specific iOS versions.
+         * To ensure robust, failure-proof execution without throwing errors:
+         * 1. We test for standard `navigator.vibrate`.
+         * 2. We provide fallback visual feedback (paddle glow flash and micro particle pulse) on every hit.
+         * 3. We trigger synchronized audio synth sound FX to provide rich sensory feedback.
+         */
+        class HapticEngine {
+            triggerHit() {
+                if ('vibrate' in navigator && typeof navigator.vibrate === 'function') {
+                    try {
+                        navigator.vibrate(12);
+                    } catch (e) {
+                        // Silent catch if browser restricts vibration invocation
+                    }
+                }
+            }
         }
-      } else if (d > 0.14){
-        // начало шага
-        const dur = clamp(0.34 / (this.speedFactor*this.def.speed), 0.16, 0.52);
-        foot.step = { t:0, dur, from: foot.target.clone(), to: target.clone(), height: clamp(d*0.30, 0.025, 0.075) };
-      }
-    };
 
-    decideStep(fFront, tFront, true);
-    decideStep(fBack, tBack, false);
+        /**
+         * PARTICLE visual effects system for hit dynamic illumination
+         */
+        class ParticleSystem {
+            constructor() {
+                this.particles = [];
+            }
 
-    // Пятка/носок
-    // Задняя нога в стойке чуть разгружена и повёрнута
-    const restHeelBack = 0.012;
-    fBack.heel = restHeelBack;
+            spawnHitBurst(x, y, color) {
+                const count = 12;
+                for (let i = 0; i < count; i++) {
+                    const angle = (Math.PI * 2 * i) / count + (Math.random() * 0.5 - 0.25);
+                    const speed = 2 + Math.random() * 4;
+                    this.particles.push({
+                        x: x,
+                        y: y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        radius: 1.5 + Math.random() * 2.5,
+                        alpha: 1,
+                        decay: 0.03 + Math.random() * 0.03,
+                        color: color || '#FFFFFF'
+                    });
+                }
+            }
 
-    // Гладкое сглаживание
-    const sm = clamp(dt*14, 0, 1);
-    this._smFootL.lerp(this.footL.target, sm);
-    this._smFootR.lerp(this.footR.target, sm);
-  }
+            update(dt) {
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    p.x += p.vx * dt * 60;
+                    p.y += p.vy * dt * 60;
+                    p.alpha -= p.decay * dt * 60;
 
-  handlePunch(dt, input, opponent){
-    if (this.punchCooldown > 0) this.punchCooldown -= dt;
+                    if (p.alpha <= 0) {
+                        this.particles.splice(i, 1);
+                    }
+                }
+            }
 
-    // Буфер комбо
-    if (this.comboBuffer.length) {
-      const nxt = this.comboBuffer[0];
-      const timeLeft = nxt.time - dt;
-      if (timeLeft <= 0) this.comboBuffer.shift();
-      else nxt.time = timeLeft;
-    }
+            draw(ctx) {
+                ctx.save();
+                for (let i = 0; i < this.particles.length; i++) {
+                    const p = this.particles[i];
+                    ctx.globalAlpha = Math.max(0, p.alpha);
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
 
-    if (!this.punch){
-      const req = input.punch;      // ключ удара или null
-      if (req && this.punchCooldown <= 0 && this.hitStun <= 0.05){
-        const pdef = PUNCH_DB[req];
-        if (pdef){
-          // Проверка выносливости
-          if (this.stamina < pdef.stam*0.6){
-            // слишком устал — удар слабый и медленный, но возможен
-          }
-          this.startPunch(req);
+            clear() {
+                this.particles = [];
+            }
         }
-      } else if (input.punchQueue && input.punchQueue.length && this.punchCooldown <= 0){
-        this.startPunch(input.punchQueue.shift());
-      }
-    }
 
-    if (this.punch){
-      const p = this.punch;
-      const pdef = p.def;
-      // Усталость увеличивает длительность
-      const slowMul = 1 + this.fatigueArms*0.55 + this.fatigueCore*0.30;
-      p.t += dt / (pdef.dur * slowMul);
-      if (p.t >= 1){
-        this.punch = null;
-        this.punchCooldown = 0.055 + this.fatigueArms*0.09;
-        // Начало возврата стопы — уже в анимации
-      } else {
-        // Регистрация попадания в активной фазе
-        if (p.t > 0.28 && p.t < 0.80 && !p.hitDone){
-          this.checkHit(opponent, p);
+        /**
+         * MAIN GAME ENGINE
+         */
+        class GameEngine {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+
+                // Audio & Haptics
+                this.audio = new SoundEngine();
+                this.haptics = new HapticEngine();
+                this.particles = new ParticleSystem();
+
+                // UI Elements
+                this.startScreen = document.getElementById('startScreen');
+                this.gameOverScreen = document.getElementById('gameOverScreen');
+                this.hudScore = document.getElementById('hudScore');
+                this.finalScoreEl = document.getElementById('finalScore');
+                this.bestScoreEl = document.getElementById('bestScore');
+                this.startBtn = document.getElementById('startBtn');
+                this.restartBtn = document.getElementById('restartBtn');
+                this.homeBtn = document.getElementById('homeBtn');
+                this.audioToggleBtn = document.getElementById('audioToggle');
+                this.iconSoundOn = document.getElementById('iconSoundOn');
+                this.iconSoundOff = document.getElementById('iconSoundOff');
+
+                // Screen & Scale Settings
+                this.width = 0;
+                this.height = 0;
+                this.dpr = 1;
+
+                // Game State variables
+                this.state = 'START'; // 'START', 'PLAYING', 'GAMEOVER'
+                this.score = 0;
+                this.highScore = this.loadHighScore();
+                this.lastTime = 0;
+                this.animFrameId = null;
+
+                // Game Objects
+                this.ball = {
+                    x: 0,
+                    y: 0,
+                    vx: 0,
+                    vy: 0,
+                    radius: 8,
+                    baseSpeed: 400, // Logical pixels per second
+                    speed: 400,
+                    maxSpeed: 850,
+                    lastHitTime: 0
+                };
+
+                this.paddle = {
+                    x: 0,
+                    y: 0,
+                    width: 110,
+                    height: 28,
+                    radius: 14, // Pill rounded capsule shape
+                    targetX: 0,
+                    flashIntensity: 0
+                };
+
+                this.input = {
+                    isPointerDown: false,
+                    pointerX: 0
+                };
+
+                this.init();
+            }
+
+            loadHighScore() {
+                try {
+                    const saved = localStorage.getItem('dynamic_bounce_highscore');
+                    return saved ? parseInt(saved, 10) || 0 : 0;
+                } catch (e) {
+                    return 0; // Fallback if localStorage disabled / restricted
+                }
+            }
+
+            saveHighScore(score) {
+                try {
+                    localStorage.setItem('dynamic_bounce_highscore', score.toString());
+                } catch (e) {
+                    // Ignore storage save failures
+                }
+            }
+
+            init() {
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+                window.addEventListener('orientationchange', () => setTimeout(() => this.resizeCanvas(), 100));
+
+                this.setupInputs();
+                this.setupUI();
+                this.resetBallAndPaddle();
+
+                // Start initial background render loop
+                this.lastTime = performance.now();
+                this.animFrameId = requestAnimationFrame((t) => this.loop(t));
+            }
+
+            resizeCanvas() {
+                this.dpr = window.devicePixelRatio || 1;
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+
+                this.canvas.width = this.width * this.dpr;
+                this.canvas.height = this.height * this.dpr;
+                this.ctx.scale(this.dpr, this.dpr);
+
+                // Adjust relative paddle y position (safe distance above Home Indicator)
+                const safeBottomPadding = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '20', 10);
+                this.paddle.y = this.height - Math.max(60, safeBottomPadding + 45);
+
+                // Re-clamp paddle position inside canvas bounds
+                this.clampPaddlePosition();
+            }
+
+            clampPaddlePosition() {
+                const halfWidth = this.paddle.width / 2;
+                if (this.paddle.x < halfWidth) this.paddle.x = halfWidth;
+                if (this.paddle.x > this.width - halfWidth) this.paddle.x = this.width - halfWidth;
+            }
+
+            setupInputs() {
+                // Pointer Event listeners handling both Touch and Mouse seamlessly
+                const onPointerMove = (e) => {
+                    if (this.state === 'PLAYING') {
+                        this.paddle.targetX = e.clientX;
+                    }
+                };
+
+                const onPointerDown = (e) => {
+                    this.audio.init();
+                    if (this.state === 'PLAYING') {
+                        this.input.isPointerDown = true;
+                        this.paddle.targetX = e.clientX;
+                    }
+                };
+
+                const onPointerUp = () => {
+                    this.input.isPointerDown = false;
+                };
+
+                window.addEventListener('pointerdown', onPointerDown);
+                window.addEventListener('pointermove', onPointerMove);
+                window.addEventListener('pointerup', onPointerUp);
+                window.addEventListener('pointercancel', onPointerUp);
+
+                // Visibility change detection to prevent teleporting ball
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden && this.state === 'PLAYING') {
+                        this.lastTime = performance.now();
+                    }
+                });
+            }
+
+            setupUI() {
+                this.startBtn.addEventListener('click', () => {
+                    this.audio.init();
+                    this.startGame();
+                });
+
+                this.restartBtn.addEventListener('click', () => {
+                    this.audio.init();
+                    this.startGame();
+                });
+
+                this.homeBtn.addEventListener('click', () => {
+                    this.showStartScreen();
+                });
+
+                this.audioToggleBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.audio.init();
+                    this.audio.muted = !this.audio.muted;
+                    if (this.audio.muted) {
+                        this.iconSoundOn.style.display = 'none';
+                        this.iconSoundOff.style.display = 'block';
+                    } else {
+                        this.iconSoundOn.style.display = 'block';
+                        this.iconSoundOff.style.display = 'none';
+                    }
+                });
+            }
+
+            showStartScreen() {
+                this.state = 'START';
+                this.gameOverScreen.classList.add('hidden');
+                this.startScreen.classList.remove('hidden');
+                this.resetBallAndPaddle();
+            }
+
+            startGame() {
+                this.state = 'PLAYING';
+                this.score = 0;
+                this.hudScore.textContent = '0';
+                this.startScreen.classList.add('hidden');
+                this.gameOverScreen.classList.add('hidden');
+                this.particles.clear();
+
+                this.resetBallAndPaddle();
+                this.launchBall();
+            }
+
+            gameOver() {
+                this.state = 'GAMEOVER';
+                this.audio.playGameOver();
+
+                if (this.score > this.highScore) {
+                    this.highScore = this.score;
+                    this.saveHighScore(this.highScore);
+                }
+
+                this.finalScoreEl.textContent = this.score.toString();
+                this.bestScoreEl.textContent = this.highScore.toString();
+
+                this.gameOverScreen.classList.remove('hidden');
+            }
+
+            resetBallAndPaddle() {
+                this.paddle.x = this.width / 2;
+                this.paddle.targetX = this.width / 2;
+                this.paddle.flashIntensity = 0;
+
+                this.ball.x = this.width / 2;
+                this.ball.y = this.paddle.y - 120;
+                this.ball.vx = 0;
+                this.ball.vy = 0;
+                this.ball.speed = this.ball.baseSpeed;
+            }
+
+            launchBall() {
+                // Launch ball upwards with controlled random angle (-30deg to +30deg)
+                const angle = (Math.random() * 60 - 30) * (Math.PI / 180);
+                this.ball.speed = this.ball.baseSpeed;
+                this.ball.vx = this.ball.speed * Math.sin(angle);
+                this.ball.vy = -this.ball.speed * Math.cos(angle);
+            }
+
+            /**
+             * Advanced physics update with delta-time safety step-subdivisions.
+             * Prevents ball tunneling through paddle or walls at high velocities.
+             */
+            updatePhysics(dt) {
+                if (this.state !== 'PLAYING') return;
+
+                // Smoothly lerp paddle position towards finger/mouse target
+                const lerpFactor = 0.25;
+                this.paddle.x += (this.paddle.targetX - this.paddle.x) * lerpFactor;
+                this.clampPaddlePosition();
+
+                // Dim hit highlight animation
+                if (this.paddle.flashIntensity > 0) {
+                    this.paddle.flashIntensity -= dt * 4;
+                    if (this.paddle.flashIntensity < 0) this.paddle.flashIntensity = 0;
+                }
+
+                // Substep collision system to prevent frame-skipping / tunneling
+                const totalMove = Math.hypot(this.ball.vx * dt, this.ball.vy * dt);
+                const maxStep = 4; // Maximum travel distance per sub-step in logical pixels
+                const steps = Math.max(1, Math.ceil(totalMove / maxStep));
+                const subDt = dt / steps;
+
+                for (let s = 0; s < steps; s++) {
+                    this.ball.x += this.ball.vx * subDt;
+                    this.ball.y += this.ball.vy * subDt;
+
+                    // Wall Collision: Left / Right
+                    if (this.ball.x - this.ball.radius <= 0) {
+                        this.ball.x = this.ball.radius;
+                        this.ball.vx = Math.abs(this.ball.vx);
+                        this.audio.playBounce(false);
+                    } else if (this.ball.x + this.ball.radius >= this.width) {
+                        this.ball.x = this.width - this.ball.radius;
+                        this.ball.vx = -Math.abs(this.ball.vx);
+                        this.audio.playBounce(false);
+                    }
+
+                    // Wall Collision: Top
+                    if (this.ball.y - this.ball.radius <= 0) {
+                        this.ball.y = this.ball.radius;
+                        this.ball.vy = Math.abs(this.ball.vy);
+                        this.audio.playBounce(false);
+                    }
+
+                    // Bottom Boundary: Game Over trigger
+                    if (this.ball.y - this.ball.radius > this.height) {
+                        this.gameOver();
+                        return;
+                    }
+
+                    // Paddle Capsule Geometric Intersection Test
+                    this.checkPaddleCollision();
+                }
+
+                // Particle Engine updates
+                this.particles.update(dt);
+            }
+
+            /**
+             * Capsule geometric intersection test for smooth oval deflection
+             */
+            checkPaddleCollision() {
+                // Debounce double hit registration in consecutive sub-steps
+                const now = performance.now();
+                if (now - this.ball.lastHitTime < 100) return;
+
+                // Only detect collision if ball is moving downwards
+                if (this.ball.vy <= 0) return;
+
+                const py = this.paddle.y;
+                const px = this.paddle.x;
+                const pw = this.paddle.width;
+                const ph = this.paddle.height;
+                const halfW = pw / 2 - ph / 2; // Flat inner segment length from center
+
+                // Nearest point on paddle's internal center line segment
+                let nearestX = Math.max(px - halfW, Math.min(px + halfW, this.ball.x));
+                let nearestY = py;
+
+                const distX = this.ball.x - nearestX;
+                const distY = this.ball.y - nearestY;
+                const distance = Math.hypot(distX, distY);
+                const minDistance = this.ball.radius + (ph / 2);
+
+                if (distance <= minDistance) {
+                    this.ball.lastHitTime = now;
+
+                    // Calculate deflection angle based on impact distance from center
+                    const relativeImpact = (this.ball.x - px) / (pw / 2); // -1.0 (left edge) to +1.0 (right edge)
+                    const clampedImpact = Math.max(-1, Math.min(1, relativeImpact));
+
+                    // Max deflection angle: 60 degrees from vertical
+                    const maxAngle = (60 * Math.PI) / 180;
+                    const bounceAngle = clampedImpact * maxAngle;
+
+                    // Progressive speed increase (2.5% increase per bounce up to max limit)
+                    this.ball.speed = Math.min(this.ball.maxSpeed, this.ball.speed * 1.025);
+
+                    // Recalculate velocity vectors
+                    this.ball.vx = this.ball.speed * Math.sin(bounceAngle);
+                    this.ball.vy = -this.ball.speed * Math.cos(bounceAngle);
+
+                    // Separate ball outside collision zone
+                    const overlap = minDistance - distance;
+                    if (distance > 0) {
+                        this.ball.x += (distX / distance) * (overlap + 1);
+                        this.ball.y += (distY / distance) * (overlap + 1);
+                    } else {
+                        this.ball.y = py - (ph / 2) - this.ball.radius - 1;
+                    }
+
+                    // Score increment & visual effects
+                    this.score += 1;
+                    this.hudScore.textContent = this.score.toString();
+                    this.paddle.flashIntensity = 1.0;
+
+                    // Trigger Audio, Haptics & Particle burst
+                    this.audio.playBounce(true);
+                    this.haptics.triggerHit();
+                    this.particles.spawnHitBurst(this.ball.x, this.ball.y + this.ball.radius, '#FFFFFF');
+                }
+            }
+
+            render() {
+                this.ctx.clearRect(0, 0, this.width, this.height);
+
+                // Render Particles
+                this.particles.draw(this.ctx);
+
+                // Render Paddle (Dynamic Island Capsule Style)
+                this.drawPaddle();
+
+                // Render Ball
+                if (this.state === 'PLAYING') {
+                    this.drawBall();
+                }
+            }
+
+            drawPaddle() {
+                const p = this.paddle;
+                const x = p.x - p.width / 2;
+                const y = p.y - p.height / 2;
+                const radius = p.height / 2;
+
+                this.ctx.save();
+
+                // Outer ambient glow
+                this.ctx.shadowColor = 'rgba(255, 255, 255, ' + (0.15 + p.flashIntensity * 0.5) + ')';
+                this.ctx.shadowBlur = 15 + p.flashIntensity * 20;
+
+                // Base Dynamic Island Capsule body
+                this.ctx.fillStyle = p.flashIntensity > 0 ? '#FFFFFF' : '#0F1015';
+                this.ctx.beginPath();
+                this.ctx.roundRect(x, y, p.width, p.height, radius);
+                this.ctx.fill();
+
+                // Inner contrast border
+                this.ctx.lineWidth = 1.5;
+                this.ctx.strokeStyle = `rgba(255, 255, 255, ${0.2 + p.flashIntensity * 0.6})`;
+                this.ctx.stroke();
+
+                // Subtle top glass specularity reflection
+                const reflectGrad = this.ctx.createLinearGradient(x, y, x, y + p.height / 2);
+                reflectGrad.addColorStop(0, 'rgba(255, 255, 255, 0.25)');
+                reflectGrad.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+
+                this.ctx.fillStyle = reflectGrad;
+                this.ctx.beginPath();
+                this.ctx.roundRect(x + 2, y + 1, p.width - 4, p.height / 2, [radius, radius, 0, 0]);
+                this.ctx.fill();
+
+                this.ctx.restore();
+            }
+
+            drawBall() {
+                const b = this.ball;
+
+                this.ctx.save();
+
+                // Ball Outer Glow
+                this.ctx.shadowColor = 'rgba(255, 255, 255, 0.6)';
+                this.ctx.shadowBlur = 12;
+
+                // 3D Volume Gradient
+                const grad = this.ctx.createRadialGradient(
+                    b.x - b.radius * 0.3,
+                    b.y - b.radius * 0.3,
+                    b.radius * 0.1,
+                    b.x,
+                    b.y,
+                    b.radius
+                );
+                grad.addColorStop(0, '#FFFFFF');
+                grad.addColorStop(0.8, '#E0E0E5');
+                grad.addColorStop(1, '#9999A0');
+
+                this.ctx.fillStyle = grad;
+                this.ctx.beginPath();
+                this.ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                this.ctx.restore();
+            }
+
+            loop(timestamp) {
+                let dt = (timestamp - this.lastTime) / 1000;
+                this.lastTime = timestamp;
+
+                // Clamp delta time to max 0.033s (30fps equivalent) to prevent massive physical skips on tab return
+                if (dt > 0.033) dt = 0.033;
+
+                this.updatePhysics(dt);
+                this.render();
+
+                this.animFrameId = requestAnimationFrame((t) => this.loop(t));
+            }
         }
-      }
-    }
-  }
 
-  startPunch(key){
-    const pdef = PUNCH_DB[key];
-    this.punch = { key, def: pdef, t: 0, hitDone:false, hand: pdef.hand, startPos:null };
-    this.stats.thrown++;
-    if (Game.audio) Game.audio.whoosh();
-    // Расход
-    this.stamina = clamp(this.stamina - pdef.stam*0.55, 0, 1);
-    this.fatigueArms = clamp(this.fatigueArms + pdef.stam*0.75, 0, 1);
-    this.fatigueCore = clamp(this.fatigueCore + pdef.stam*0.35, 0, 1);
-  }
-
-  handleDefense(dt, input){
-    const bl = input.blockL ? 1 : 0;
-    const br = input.blockR ? 1 : 0;
-    const bb = input.blockBody ? 1 : 0;
-    const targetBL = (input.blockAll ? 1 : bl);
-    const targetBR = (input.blockAll ? 1 : br);
-
-    this.blockL += clamp(targetBL - this.blockL, -dt*8, dt*8);
-    this.blockR += clamp(targetBR - this.blockR, -dt*8, dt*8);
-    this.blockBody += clamp(bb - this.blockBody, -dt*7, dt*7);
-
-    // Дыхание при блоке
-    if (this.blockL > 0.5 || this.blockR > 0.5){
-      this.fatigueArms = clamp(this.fatigueArms + dt*0.020, 0, 1);
-    }
-
-    // Уклоны
-    if (input.dodge && this.dodge <= 0 && this.hitStun <= 0.05 && !this.punch){
-      this.dodge = 1.0;
-      this.dodgeDir = input.dodge; // -1 влево, +1 вправо, 2 назад
-      this.fatigueCore = clamp(this.fatigueCore + 0.10, 0, 1);
-    }
-    if (this.dodge > 0){
-      this.dodge -= dt / 0.42;
-      if (this.dodge < 0) this.dodge = 0;
-    }
-  }
-
-  updateStamina(dt){
-    // Восстановление
-    const restRate = 0.055 * (1 - this.fatigueCore*0.4);
-    if (!this.punch && this.dodge <= 0){
-      this.stamina = clamp(this.stamina + dt*restRate, 0, 1);
-    }
-    this.fatigueArms = clamp(this.fatigueArms - dt*0.075, 0, 1);
-    this.fatigueLegs = clamp(this.fatigueLegs - dt*0.055, 0, 1);
-    this.fatigueCore = clamp(this.fatigueCore - dt*0.065, 0, 1);
-
-    // Здоровье постепенно восстанавливается между раундами (вне боя)
-    if (Game.state === 'break'){
-      this.health = clamp(this.health + dt*0.055, 0, 1);
-      this.headHealth = clamp(this.headHealth + dt*0.045, 0, 1);
-      this.bodyHealth = clamp(this.bodyHealth + dt*0.045, 0, 1);
-      this.stamina = clamp(this.stamina + dt*0.10, 0, 1);
-      this.fatigueArms *= (1 - dt*0.4);
-      this.fatigueLegs *= (1 - dt*0.4);
-      this.fatigueCore *= (1 - dt*0.4);
-    }
-  }
-
-  /* ---------- Проверка попадания ---------- */
-  checkHit(opponent, p){
-    if (!opponent) return;
-    const rig = this.rig;
-    const handNode = rig.nodes['hand'+p.hand];
-    const gloveNode = rig.arms[p.hand].glove;
-    const gloveWorld = worldPos(handNode).add(new V3(0, -0.055, 0.015));
-
-    if (!p.startPos) p.startPos = gloveWorld.clone();
-    const prev = p.prevPos || p.startPos;
-    p.prevPos = gloveWorld.clone();
-
-    // Хитбоксы соперника
-    const opHead = worldPos(opponent.rig.nodes.head).add(new V3(0, 0.055*opponent.rig.scaleH, 0));
-    const opChest = worldPos(opponent.rig.nodes.chest);
-    const opAbd = worldPos(opponent.rig.nodes.spineMid);
-    const gloveR = 0.105*this.rig.scaleH;
-    const headR = 0.135*opponent.rig.scaleH;
-    const chestR = 0.26*opponent.rig.scaleH;
-    const abdR = 0.24*opponent.rig.scaleH;
-
-    // Защитные перчатки соперника
-    const opGloveL = worldPos(opponent.rig.nodes.handL).add(new V3(0,-0.055,0.015));
-    const opGloveR = worldPos(opponent.rig.nodes.handR).add(new V3(0,-0.055,0.015));
-    const opBlocking = (opponent.blockL > 0.4 || opponent.blockR > 0.4);
-
-    // 1) Проверка блока
-    if (opBlocking){
-      const bL = opponent.blockL > 0.4 && segmentSphere(prev, gloveWorld, opGloveL, gloveR + 0.115*opponent.rig.scaleH);
-      const bR = opponent.blockR > 0.4 && segmentSphere(prev, gloveWorld, opGloveR, gloveR + 0.115*opponent.rig.scaleH);
-      if (bL || bR){
-        p.hitDone = true;
-        const power = p.def.power * (0.55 + 0.45*this.stamina) * (1 - this.fatigueArms*0.4);
-        opponent.applyBlocked(power, p.def.zone, this, p);
-        this.stats.blocked++;
-        return;
-      }
-    }
-
-    // 2) Проверка корпуса (если удар в корпус или промах по голове проходит через корпус)
-    const bodyHit = segmentSphere(prev, gloveWorld, opChest, gloveR + chestR)
-                 || segmentSphere(prev, gloveWorld, opAbd, gloveR + abdR);
-
-    // 3) Проверка головы
-    const headHit = segmentSphere(prev, gloveWorld, opHead, gloveR + headR);
-
-    // Защита корпуса руками (опущенные локти)
-    const bodyGuarded = opponent.blockBody > 0.5 && opponent.blockL > 0.2 && opponent.blockR > 0.2;
-
-    if (headHit){
-      p.hitDone = true;
-      const power = this.computeHitPower(p, this.stamina, this.fatigueArms);
-      opponent.applyHit(power, 'head', this, p, gloveWorld);
-      this.stats.landed++;
-      this.stats.damageDealt += power;
-    } else if (bodyHit){
-      if (bodyGuarded && p.def.zone !== 'body'){
-        p.hitDone = true;
-        opponent.applyBlocked(p.def.power*0.5, 'body', this, p);
-        this.stats.blocked++;
-        return;
-      }
-      p.hitDone = true;
-      const power = this.computeHitPower(p, this.stamina, this.fatigueArms) * 0.88;
-      opponent.applyHit(power, 'body', this, p, gloveWorld);
-      this.stats.landed++;
-      this.stats.damageDealt += power;
-    }
-
-    // Промах зафиксируем в конце удара
-    if (p.t > 0.75 && !p.hitDone && !p.missCounted){
-      p.missCounted = true;
-      this.stats.missed++;
-    }
-  }
-
-  computeHitPower(p, stamina, fatigue){
-    const base = p.def.power;
-    const st = 0.5 + 0.5*stamina;
-    const fg = 1 - fatigue*0.45;
-    const acc = 0.75 + 0.35*this.def.power;
-    return base * st * fg * acc;
-  }
-
-  /* ---------- Реакция на попадание ---------- */
-  applyHit(power, zone, attacker, punch, contactPoint){
-    const dmg = power * 0.14;
-    this.stats.damageTaken += power;
-    if (zone === 'head'){
-      this.headHealth = clamp(this.headHealth - dmg*1.25, 0, 1);
-      this.health = clamp(this.health - dmg*0.85, 0, 1);
-      this.hitStun = clamp(0.14 + power*0.24, 0, 0.75);
-      this.recoil = clamp(power*0.9, 0, 1.2);
-    } else {
-      this.bodyHealth = clamp(this.bodyHealth - dmg*1.15, 0, 1);
-      this.health = clamp(this.health - dmg*0.70, 0, 1);
-      this.hitStun = clamp(0.08 + power*0.18, 0, 0.55);
-      this.recoil = clamp(power*0.7, 0, 1.0);
-      this.stamina = clamp(this.stamina - power*0.07, 0, 1);
-    }
-    this.stamina = clamp(this.stamina - power*0.05, 0, 1);
-    this.fatigueCore = clamp(this.fatigueCore + power*0.10, 0, 1);
-
-    if (Game.audio){
-      Game.audio.hit(clamp(power,0.2,1.4), false);
-      if (power > 0.5) Game.audio.crowdPulse(power*0.6);
-    }
-    if (Game.camera && Game.camera.shake) Game.camera.shake(power*0.5, zone);
-
-    if (Game.hud) Game.hud.showImpact(power, zone, attacker === Game.player);
-  }
-
-  applyBlocked(power, zone, attacker, punch){
-    const bleed = power * 0.028;
-    this.health = clamp(this.health - bleed, 0, 1);
-    this.stamina = clamp(this.stamina - power*0.055, 0, 1);
-    this.fatigueArms = clamp(this.fatigueArms + power*0.13, 0, 1);
-    this.stats.blockedIncoming++;
-    if (Game.audio){
-      Game.audio.hit(clamp(power,0.2,1.2), true);
-      Game.audio.crowdPulse(power*0.25);
-    }
-    if (Game.hud) Game.hud.showImpact(power*0.5, 'block', attacker === Game.player);
-  }
-
-  /* ---------- Применение позы (главная анимационная функция) ---------- */
-  applyPose(dt){
-    const rig = this.rig;
-    const B = CFG.body;
-    const k = rig.scaleH;
-    const m = this.mirror;
-
-    // === Корень ===
-    this.root.position.copyFrom(this.position);
-    this.root.rotationQuaternion = QT.RotationYawPitchRoll(this.yaw, 0, 0);
-
-    // === Таз / позвоночник / грудь ===
-    const breath = Math.sin(this.breathPhase) * 0.5 + 0.5;
-    const micro = Math.sin(this.microPhase) * 0.5 + 0.5;
-
-    // Базовые углы стойки
-    let pelvisYaw = 0.34*m;
-    let chestYaw  = 0.26*m;
-    let leanX = 0.06;
-    let dropY = 0.0;
-    let sideLean = 0;
-
-    // Микродвижения
-    pelvisYaw += Math.sin(this.microPhase*0.7) * 0.020;
-    chestYaw  += Math.sin(this.microPhase*0.9 + 1.1) * 0.018;
-    leanX += Math.sin(this.breathPhase*0.6) * 0.012;
-    dropY += Math.sin(this.breathPhase*0.85) * 0.006;
-    sideLean += Math.sin(this.microPhase*0.55 + 2.0) * 0.012;
-
-    // Позиция таза
-    const pelvisNode = rig.nodes.pelvis;
-    let pelvisPosY = B.pelvisY * k;
-    let pelvisPosX = 0;
-    let pelvisPosZ = 0;
-
-    // === Удар ===
-    let footPivotL = this.footL.yaw;
-    let footPivotR = this.footR.yaw;
-    let heelL = this.footL.heel;
-    let heelR = this.footR.heel;
-    let handLTarget = this.handTargetL.clone();
-    let handRTarget = this.handTargetR.clone();
-    let headYaw = 0, headPitch = 0;
-
-    // Значения из стойки (локальные координаты цели рук)
-    const guardL = new V3(-0.135*m, 1.475*k, 0.245);
-    const guardR = new V3( 0.085*m, 1.495*k, 0.115);
-    handLTarget.copyFrom(guardL);
-    handRTarget.copyFrom(guardR);
-
-    if (this.punch){
-      const p = this.punch;
-      const def = p.def;
-      const tt = clamp(p.t, 0, 1);
-      const bodyS = sampleBody(def.body, tt);
-      const handS = samplePath(def.path, tt, k, m);
-
-      // тело
-      pelvisYaw += bodyS.py * m;
-      chestYaw  += bodyS.cy * m;
-      leanX     += bodyS.lean;
-      dropY     += bodyS.drop;
-      footPivotL = bodyS.pvL * m;
-      footPivotR = bodyS.pvR * m;
-      heelL = bodyS.hL * k;
-      heelR = bodyS.hR * k;
-
-      // позиция таза смещается вперёд при ударе
-      pelvisPosZ += bodyS.lean * 0.35 * m * 0;
-
-      // рука
-      if (def.hand === 'L') handLTarget.copyFrom(handS);
-      else handRTarget.copyFrom(handS);
-
-      // Голова чуть уходит за плечо при ударе
-      headYaw = -chestYaw * 0.32;
-    }
-
-    // === Защита ===
-    const blockAmt = Math.max(this.blockL, this.blockR);
-    if (this.blockL > 0.02){
-      const b = this.blockL;
-      handLTarget.lerp(new V3(-0.075*m, 1.60*k, 0.20), b*0.75);
-      // локоть вниз
-    }
-    if (this.blockR > 0.02){
-      const b = this.blockR;
-      handRTarget.lerp(new V3(0.075*m, 1.60*k, 0.14), b*0.75);
-    }
-    if (this.blockBody > 0.3){
-      const b = this.blockBody;
-      handLTarget.lerp(new V3(-0.17*m, 1.32*k, 0.30), b*0.7);
-      handRTarget.lerp(new V3(0.17*m, 1.32*k, 0.26), b*0.7);
-      leanX += b*0.10;
-      dropY += b*0.035;
-    }
-
-    // === Уклон ===
-    let dodgeX = 0, dodgeY = 0, dodgeZ = 0;
-    if (this.dodge > 0){
-      const d = Math.sin(Math.min(1, this.dodge)*Math.PI) ; // плавно вверх-вниз
-      const dd = Math.sin(clamp(this.dodge,0,1)*Math.PI);
-      if (this.dodgeDir === -1){ dodgeX = -0.20*dd*m; sideLean -= 0.20*dd*m; }
-      else if (this.dodgeDir === 1){ dodgeX = 0.20*dd*m; sideLean += 0.20*dd*m; }
-      else if (this.dodgeDir === 2){ dodgeZ = -0.13*dd; leanX -= 0.13*dd; }
-      else if (this.dodgeDir === 3){ dodgeY = -0.12*dd; dropY += 0.13*dd; }
-    }
-
-    // === Реакция на попадание ===
-    let recoilX = 0, recoilZ = 0;
-    if (this.recoil > 0){
-      const r = this.recoil;
-      // голова/корпус откидывается назад относительно направления удара
-      recoilZ = -0.10 * r;
-      leanX -= 0.12 * r;
-      headPitch = -0.20 * r;
-    }
-
-    // Применяем позвоночник
-    pelvisNode.rotationQuaternion = QT.RotationYawPitchRoll(pelvisYaw, leanX*0.5, sideLean*0.4);
-    pelvisNode.position.set(pelvisPosX, pelvisPosY + dropY - dodgeY*0.6, pelvisPosZ + dodgeZ*0.35);
-
-    const spineLow = rig.nodes.spineLow;
-    spineLow.rotationQuaternion = QT.RotationYawPitchRoll((chestYaw - pelvisYaw)*0.30, leanX*0.35, sideLean*0.3);
-
-    const spineMid = rig.nodes.spineMid;
-    spineMid.rotationQuaternion = QT.RotationYawPitchRoll((chestYaw - pelvisYaw)*0.35, leanX*0.30, sideLean*0.3);
-
-    const chest = rig.nodes.chest;
-    const chestRoll = sideLean + recoilZ*0.5;
-    chest.rotationQuaternion = QT.RotationYawPitchRoll(chestYaw, leanX*0.45 + headPitch*0.3, chestRoll);
-
-    // Голова — стабильная, чуть разворачивается к цели
-    const neck = rig.nodes.neck;
-    neck.rotationQuaternion = QT.RotationYawPitchRoll(-chestYaw*0.55 + headYaw, -leanX*0.5 + headPitch*0.4, -chestRoll*0.5);
-    const head = rig.nodes.head;
-    head.rotationQuaternion = QT.RotationYawPitchRoll(-chestYaw*0.25, headPitch*0.3, 0);
-
-    // === Ноги: IK к мировым целям ===
-    this.solveLegs(dt, footPivotL, footPivotR, heelL, heelR);
-
-    // === Руки: IK к целям ===
-    this.solveArms(handLTarget, handRTarget, dt);
-
-    // === Обновление хитбоксов ===
-    const hbS = rig.scaleH;
-    const hd = worldPos(rig.nodes.head).add(new V3(0,0.055*hbS,0));
-    rig.hbHead.position.copyFrom(hd);
-    rig.hbHead.scaling.setAll(0.27*hbS);
-    const ch = worldPos(rig.nodes.chest);
-    rig.hbBody.position.copyFrom(ch);
-    rig.hbBody.scaling.setAll(0.50*hbS);
-    const gl = worldPos(rig.nodes.handL).add(new V3(0,-0.055,0.015));
-    rig.hbGloveL.position.copyFrom(gl); rig.hbGloveL.scaling.setAll(0.21*hbS);
-    const gr = worldPos(rig.nodes.handR).add(new V3(0,-0.055,0.015));
-    rig.hbGloveR.position.copyFrom(gr); rig.hbGloveR.scaling.setAll(0.21*hbS);
-
-    // Трейлы
-    if (Game.showTrails){
-      this.pushTrail(rig.trailDotsL, gl);
-      this.pushTrail(rig.trailDotsR, gr);
-    }
-  }
-
-  pushTrail(dots, pos){
-    for (let i=dots.length-1;i>0;i--){
-      dots[i].pos = dots[i-1].pos;
-      dots[i].life = dots[i-1].life;
-    }
-    dots[0].pos = pos.clone(); dots[0].life = 1;
-    for (const d of dots){
-      if (d.pos && d.life > 0){
-        d.mesh.isVisible = true;
-        d.mesh.position.copyFrom(d.pos);
-        d.mesh.scaling.setAll(d.life*0.9);
-        d.life -= 0.045;
-      } else d.mesh.isVisible = false;
-    }
-  }
-
-  solveLegs(dt, pivotL, pivotR, heelL, heelR){
-    const rig = this.rig;
-    const B = CFG.body;
-    const k = rig.scaleH;
-    const cosY = Math.cos(this.yaw), sinY = Math.sin(this.yaw);
-    const toWorld = (lx, ly, lz) => new V3(
-      this.position.x + lx*cosY + lz*sinY,
-      this.position.y + ly,
-      this.position.z - lx*sinY + lz*cosY
-    );
-
-    for (const side of ['L','R']){
-      const fdata = side === 'L' ? this.footL : this.footR;
-      const sm = side === 'L' ? this._smFootL : this._smFootR;
-      const leg = rig.legs[side];
-
-      const fx = sm.x;
-      const fz = sm.z;
-      const lift = fdata.lift;
-      const heel = side === 'L' ? heelL : heelR;
-
-      // Позиция стопы в мире (лодыжка)
-      const ankleLocal = new V3(fx, B.ankleH*k + lift, fz);
-      const ankleWorld = toWorld(ankleLocal.x, ankleLocal.y, ankleLocal.z);
-
-      // Бедро
-      const hipNode = leg.hip;
-      const hipWorld = worldPos(hipNode);
-
-      // IK
-      const L1 = B.thigh*k, L2 = B.shin*k;
-      const pole = toWorld(fx, 0, fz + 0.9).subtract(toWorld(fx,0,fz));
-      pole.y = 0; pole.normalize();
-      const sol = solveTwoBone(hipWorld, ankleWorld, pole, L1, L2);
-
-      setBoneDir(leg.thigh, sol.b1);
-      setBoneDir(leg.shin, sol.b2);
-
-      // Стопа: мировая ориентация = yaw корня + локальный поворот стопы + подъём пятки
-      const pivot = side === 'L' ? pivotL : pivotR;
-      const footYaw = this.yaw + pivot;
-      const heelAng = -clamp(heel / (B.footLen*k), 0, 0.9);
-      const qWorld = QT.RotationYawPitchRoll(footYaw, heelAng, 0);
-      const parentQ = worldQuat(leg.shin);
-      leg.foot.rotationQuaternion = QT.Inverse(parentQ).multiply(qWorld);
-    }
-  }
-
-  solveArms(handL, handR, dt){
-    const rig = this.rig;
-    const B = CFG.body;
-    const k = rig.scaleH;
-    const cosY = Math.cos(this.yaw), sinY = Math.sin(this.yaw);
-    const toWorld = (lx, ly, lz) => new V3(
-      this.position.x + lx*cosY + lz*sinY,
-      this.position.y + ly,
-      this.position.z - lx*sinY + lz*cosY
-    );
-
-    // Плечи
-    const shWorldL = worldPos(rig.nodes.shoulderL);
-    const shWorldR = worldPos(rig.nodes.shoulderR);
-
-    const solveArm = (side, shWorld, handLocal) => {
-      const arm = rig.arms[side];
-      const handWorld = toWorld(handLocal.x, handLocal.y, handLocal.z);
-      const L1 = B.upperArm*k, L2 = B.foreArm*k;
-
-      // Полюс локтя: вниз и немного наружу/назад
-      const sgn = side === 'L' ? -1 : 1;
-      const poleLocal = new V3(sgn*0.35, -0.55, -0.75);
-      const pole = toWorld(poleLocal.x, poleLocal.y, poleLocal.z).subtract(toWorld(0,0,0));
-      pole.y = 0;
-      if (pole.lengthSquared() < 1e-6) pole.set(sgn,0,-1);
-      pole.normalize();
-
-      const sol = solveTwoBone(shWorld, handWorld, pole, L1, L2);
-      setBoneDir(arm.ua, sol.b1);
-      setBoneDir(arm.fa, sol.b2);
-
-      // Кисть ориентируем вдоль предплечья
-      const parentQ = worldQuat(arm.fa);
-      const handDirQ = quatFromDir(sol.b2);
-      arm.hand.rotationQuaternion = QT.Inverse(parentQ).multiply(handDirQ);
-    };
-
-    solveArm('L', shWorldL, handL);
-    solveArm('R', shWorldR, handR);
-  }
-
-  /* Точки попадания для ИИ-реакций и визуализации */
-  getHeadPoint(){ return worldPos(this.rig.nodes.head).add(new V3(0, 0.055*this.rig.scaleH, 0)); }
-  getChestPoint(){ return worldPos(this.rig.nodes.chest); }
-}
-
-function mirrorSign(f){ return f.orthodox ? 1 : -1; }
-
-/* --- Интерполяция таблиц удара --- */
-function samplePath(path, t, k, m){
-  let a = path[0], b = path[path.length-1];
-  for (let i=0;i<path.length-1;i++){
-    if (t >= path[i].t && t <= path[i+1].t){ a = path[i]; b = path[i+1]; break; }
-  }
-  const span = Math.max(1e-5, b.t - a.t);
-  let lt = clamp((t - a.t)/span, 0, 1);
-  lt = smoothstep(lt);
-  return new V3(
-    lerp(a.p[0], b.p[0], lt) * m,
-    lerp(a.p[1], b.p[1], lt) * k,
-    lerp(a.p[2], b.p[2], lt)
-  );
-}
-function sampleBody(body, t){
-  let a = body[0], b = body[body.length-1];
-  for (let i=0;i<body.length-1;i++){
-    if (t >= body[i].t && t <= body[i+1].t){ a = body[i]; b = body[i+1]; break; }
-  }
-  const span = Math.max(1e-5, b.t - a.t);
-  let lt = clamp((t - a.t)/span, 0, 1);
-  lt = smoothstep(lt);
-  return {
-    py: lerp(a.py, b.py, lt),
-    cy: lerp(a.cy, b.cy, lt),
-    lean: lerp(a.lean, b.lean, lt),
-    hL: lerp(a.hL, b.hL, lt),
-    hR: lerp(a.hR, b.hR, lt),
-    pvL: lerp(a.pvL, b.pvL, lt),
-    pvR: lerp(a.pvR, b.pvR, lt),
-    drop: lerp(a.drop, b.drop, lt)
-  };
-}
-
-/* ======================= Искусственный интеллект ======================= */
-class OpponentAI {
-  constructor(controller, style, difficulty){
-    this.c = controller;
-    this.styleName = style;
-    this.style = AI_STYLES[style] || AI_STYLES.technical;
-    this.diff = difficulty; // 0..2
-    this.think = 0;
-    this.decision = { move:new V3(0,0,0), punch:null, blockL:false, blockR:false, blockBody:false, dodge:null, sprint:false, blockAll:false };
-    this.plan = null;
-    this.comboLeft = 0;
-    this.lastPlayerPunchKey = null;
-    this.playerPunchHistory = [];
-    this.reactTimer = 0;
-    this.pendingReaction = null;
-    this.dodgeCooldown = 0;
-    this.punchCooldown = 0;
-  }
-
-  reset(){
-    this.think = 0; this.plan = null; this.comboLeft = 0;
-    this.reactTimer = 0; this.pendingReaction = null;
-    this.dodgeCooldown = 0; this.punchCooldown = 0;
-    this.playerPunchHistory.length = 0;
-  }
-
-  update(dt, player){
-    const c = this.c;
-    const d = clamp(V3.Distance(c.position, player.position), 0.1, 8);
-    const diffMul = [0.78, 1.0, 1.18][this.diff] || 1.0;
-    const st = this.style;
-
-    // --- Оценка усталости и состояния ---
-    const tired = c.fatigueArms*0.5 + c.fatigueCore*0.35 + (1-c.stamina)*0.4;
-    const hurt = (1 - c.health)*0.7 + (1 - c.headHealth)*0.35;
-
-    // --- Реакция на действия игрока ---
-    // Отслеживаем новые удары игрока
-    if (player.punch && player.punch.key !== this.lastPlayerPunchKey){
-      this.lastPlayerPunchKey = player.punch.key;
-      this.playerPunchHistory.push({key: player.punch.key, t: performance.now()});
-      if (this.playerPunchHistory.length > 10) this.playerPunchHistory.shift();
-    }
-    if (!player.punch) this.lastPlayerPunchKey = null;
-
-    // Реакция на удар игрока (уклон/блок)
-    if (player.punch && player.punch.t < 0.35 && this.reactTimer <= 0){
-      const reactionChance = st.counter * diffMul * (0.6 + 0.4*c.stamina) * (1 - tired*0.4);
-      if (Math.random() < reactionChance){
-        this.reactTimer = st.reactMs/1000 * rand(0.7, 1.35) * (1 + tired*0.6);
-        // выбор действия
-        const r = Math.random();
-        if (r < 0.30 && this.dodgeCooldown <= 0){
-          this.pendingReaction = { type:'dodge', dir: Math.random()<0.5 ? -1 : 1 };
-          this.dodgeCooldown = 1.2;
-        } else if (r < 0.78){
-          const zone = PUNCH_DB[player.punch.key].zone;
-          this.pendingReaction = { type:'block', zone: zone === 'head' ? 'high' : 'body' };
-        } else {
-          this.pendingReaction = { type:'step', dir: Math.random()<0.5?-1:1 };
-        }
-      }
-    }
-    if (this.reactTimer > 0) this.reactTimer -= dt;
-    if (this.dodgeCooldown > 0) this.dodgeCooldown -= dt;
-    if (this.punchCooldown > 0) this.punchCooldown -= dt;
-
-    // Сброс решения
-    const D = this.decision;
-    D.move.set(0,0,0);
-    D.punch = null;
-    D.blockL = false; D.blockR = false; D.blockBody = false;
-    D.blockAll = false;
-    D.dodge = null;
-    D.sprint = false;
-
-    // --- Применение реакции ---
-    if (this.pendingReaction){
-      const pr = this.pendingReaction;
-      if (pr.type === 'dodge' && c.dodge <= 0){
-        D.dodge = pr.dir;
-        this.pendingReaction = null;
-      } else if (pr.type === 'block'){
-        if (pr.zone === 'high'){ D.blockL = true; D.blockR = true; }
-        else { D.blockBody = true; D.blockL = true; D.blockR = true; }
-        if (this.reactTimer <= 0) this.pendingReaction = null;
-      } else if (pr.type === 'step'){
-        D.move.x = pr.dir;
-        this.pendingReaction = null;
-      }
-    }
-
-    // --- Тактическое планирование ---
-    this.think -= dt;
-    if (this.think <= 0){
-      this.think = rand(0.11, 0.26) * (1 + tired*0.8);
-      this.planDecision(d, player, tired, hurt, st, diffMul);
-    }
-
-    // Применяем план
-    if (this.plan){
-      const P = this.plan;
-      D.move.x += P.moveX;
-      D.move.z += P.moveZ;
-      if (P.guard > 0.5){
-        D.blockL = true; D.blockR = true;
-      }
-      if (P.blockBody) D.blockBody = true;
-      if (P.sprint) D.sprint = true;
-      if (P.punch && this.punchCooldown <= 0 && !c.punch){
-        D.punch = P.punch;
-        this.punchCooldown = rand(0.12, 0.28) / diffMul;
-        P.punch = null;
-        P.repeat = (P.repeat||0) - 1;
-        if (P.repeat <= 0) { this.comboLeft = 0; }
-      }
-      // Движение после удара
-      if (c.punch && c.punch.t > 0.7 && P.retreatAfter){
-        D.move.z = -0.7;
-      }
-    }
-
-    // Ограничение движения: не выходить за ринг
-    const margin = 0.9;
-    if (Ring.instance){
-      const H = CFG.ring.half - margin;
-      if (c.position.x > H) D.move.x -= 0.6;
-      if (c.position.x < -H) D.move.x += 0.6;
-      if (c.position.z > H) D.move.z -= 0.6;
-      if (c.position.z < -H) D.move.z += 0.6;
-    }
-
-    // Нормализуем
-    const ml = Math.hypot(D.move.x, D.move.z);
-    if (ml > 1){ D.move.x /= ml; D.move.z /= ml; }
-
-    return D;
-  }
-
-  planDecision(dist, player, tired, hurt, st, diffMul){
-    const c = this.c;
-    const aggr = st.aggr * diffMul * (1 - tired*0.45) * (1 - hurt*0.35);
-    const myReach = 0.95 + c.def.reach*0.02;
-    const closeRange = 0.85;
-    const midRange = 1.35;
-
-    const plan = {
-      moveX: 0, moveZ: 0, guard: 0, blockBody:false, sprint:false, punch:null,
-      repeat:0, retreatAfter:false
-    };
-
-    // Позиционирование
-    if (dist > midRange){
-      // сближение
-      plan.moveZ = 1;
-      plan.sprint = Math.random() < 0.35 * aggr;
-      plan.guard = 0.35 + st.guard*0.3;
-      if (Math.random() < aggr * 0.8 && dist < 2.2){
-        plan.punch = Math.random() < 0.7 ? 'jab' : (c.orthodox ? 'cross' : 'jab');
-        plan.repeat = 1;
-        plan.retreatAfter = false;
-      }
-    } else if (dist > closeRange){
-      // рабочая дистанция
-      plan.guard = 0.4 + st.guard*0.4;
-      const r = Math.random();
-      if (r < aggr * 0.85){
-        // атака комбинацией
-        const combo = this.pickCombo(c.orthodox);
-        plan.punch = combo[0];
-        plan.repeat = combo.length;
-        this.comboQueue = combo.slice(1);
-        plan.moveZ = 0.25;
-      } else if (r < aggr*0.85 + 0.22){
-        // движение по кругу
-        plan.moveX = Math.random() < 0.5 ? 1 : -1;
-        plan.moveZ = rand(-0.2, 0.2);
-      } else {
-        plan.moveZ = -0.4;
-        plan.guard = 0.9;
-      }
-      // Защита при низком здоровье
-      if (hurt > 0.55) plan.guard = Math.max(plan.guard, 0.85);
-    } else {
-      // клинч-зона
-      plan.guard = 0.75;
-      plan.moveZ = -0.5;
-      if (Math.random() < 0.55 * aggr && !c.punch){
-        plan.punch = Math.random() < 0.5 ? 'hookL' : 'hookR';
-        plan.repeat = 1;
-      }
-    }
-
-    // Контратака: если игрок только что промахнулся
-    if (player.punch && player.punch.t > 0.65 && !player.punch.hitDone && dist < 1.6){
-      if (Math.random() < st.counter * diffMul * 0.55){
-        plan.punch = c.orthodox ? 'cross' : 'cross';
-        plan.repeat = 1;
-        plan.moveZ = 0.35;
-      }
-    }
-
-    // Не давать спамить: ограничение по выносливости
-    if (c.stamina < 0.32 && Math.random() < 0.6){
-      plan.punch = null;
-      plan.moveZ = -0.3;
-      plan.guard = 0.85;
-    }
-
-    this.plan = plan;
-  }
-
-  pickCombo(orthodox){
-    const j = 'jab';
-    const cr = 'cross';
-    const hl = orthodox ? 'hookL' : 'hookR';
-    const hr = orthodox ? 'hookR' : 'hookL';
-    const ul = orthodox ? 'uppercutL' : 'uppercutR';
-    const ur = orthodox ? 'uppercutR' : 'uppercutL';
-    const pool = [
-      [j], [j,j], [j,cr], [j,hr], [cr], [hl], [j,hl], [ul,hr], [j,cr,hl], [j,ur]
-    ];
-    return pick(pool);
-  }
-
-  /* Забрать следующий удар из очереди комбо */
-  nextComboPunch(){
-    if (this.comboQueue && this.comboQueue.length) return this.comboQueue.shift();
-    return null;
-  }
-}
-
-/* ======================= Камера ======================= */
-class CameraController {
-  constructor(scene, canvas){
-    this.scene = scene;
-    this.cam = new BABYLON.FreeCamera('fightCam', new V3(0,2.6,-5.2), scene);
-    this.cam.setTarget(new V3(0,1.3,0));
-    this.cam.fov = 0.86;
-    this.cam.minZ = 0.05;
-    this.cam.maxZ = 90;
-    this.cam.inputs.clear();
-    this.mode = 0;   // 0 стандарт, 1 близкая, 2 широкая, 3 угол, 4 свободная
-    this.target = new V3(0,1.2,0);
-    this.shakeAmt = 0; this.shakeDecay = 0;
-    this.smoothPos = new V3(0,2.6,-5.2);
-    this.smoothTgt = new V3(0,1.2,0);
-    this.orbit = 0;
-    this.modeNames = ['Стандартная','Близкая','Широкая','Угол ринга','Свободная'];
-  }
-  setMode(m){
-    this.mode = m % 5;
-    const names = {0:'Стандартная',1:'Близкая',2:'Широкая',3:'Угол ринга',4:'Свободная'};
-    if (Game.hud) Game.hud.toast('Камера: ' + names[this.mode]);
-  }
-  shake(power, zone){
-    this.shakeAmt = Math.max(this.shakeAmt, clamp(power*0.11, 0, 0.28));
-    this.shakeDecay = 2.4;
-  }
-  update(dt, player, opponent){
-    const p = player.position, o = opponent ? opponent.position : player.position.clone().add(new V3(0,0,1.5));
-    const mid = p.add(o).scale(0.5);
-    const dir = o.subtract(p); dir.y = 0;
-    const dist = Math.max(0.6, dir.length());
-    dir.normalize();
-
-    let camPos = new V3(), camTgt = new V3();
-
-    switch(this.mode){
-      case 0: { // стандартная — позади игрока
-        const back = dir.scale(-1);
-        const side = V3.Cross(new V3(0,1,0), dir).normalize();
-        const d = clamp(2.9 + dist*1.05, 3.2, 6.4);
-        camPos = p.add(back.scale(d)).add(side.scale(1.05)).add(new V3(0, 2.05 + dist*0.10, 0));
-        camTgt = mid.clone(); camTgt.y = 1.20;
-        break;
-      }
-      case 1: { // близкая
-        const back = dir.scale(-1);
-        const side = V3.Cross(new V3(0,1,0), dir).normalize();
-        const d = clamp(2.1 + dist*0.62, 2.2, 4.0);
-        camPos = p.add(back.scale(d)).add(side.scale(0.78)).add(new V3(0, 1.70, 0));
-        camTgt = mid.clone(); camTgt.y = 1.32;
-        break;
-      }
-      case 2: { // широкая
-        const back = dir.scale(-1);
-        const side = V3.Cross(new V3(0,1,0), dir).normalize();
-        camPos = mid.clone().add(back.scale(6.2)).add(side.scale(2.6)).add(new V3(0, 3.6, 0));
-        camTgt = mid.clone(); camTgt.y = 1.15;
-        break;
-      }
-      case 3: { // угол ринга
-        const side = V3.Cross(new V3(0,1,0), dir).normalize();
-        camPos = mid.clone().add(side.scale(4.4)).add(new V3(0, 2.25, 0)).subtract(dir.scale(0.9));
-        camTgt = mid.clone(); camTgt.y = 1.25;
-        break;
-      }
-      default: { // свободная — медленно вращается вокруг
-        this.orbit += dt*0.14;
-        camPos = mid.clone().add(new V3(Math.cos(this.orbit)*4.6, 2.7 + Math.sin(this.orbit*0.6)*0.6, Math.sin(this.orbit)*4.6));
-        camTgt = mid.clone(); camTgt.y = 1.15;
-        break;
-      }
-    }
-
-    // Не уходить под ринг
-    camPos.y = Math.max(camPos.y, 0.55);
-
-    const sm = clamp(dt*7.0, 0, 1);
-    this.smoothPos.lerp(camPos, sm);
-    this.smoothTgt.lerp(camTgt, sm*1.25);
-
-    let finalPos = this.smoothPos.clone();
-    if (this.shakeAmt > 0.0005){
-      finalPos.x += rand(-1,1)*this.shakeAmt;
-      finalPos.y += rand(-1,1)*this.shakeAmt;
-      finalPos.z += rand(-1,1)*this.shakeAmt;
-      this.shakeAmt = Math.max(0, this.shakeAmt - dt*this.shakeDecay*this.shakeAmt*2.2 - dt*0.02);
-    }
-    this.cam.position.copyFrom(finalPos);
-    this.cam.setTarget(this.smoothTgt);
-  }
-}
-
-/* ======================= Управление ======================= */
-class InputManager {
-  constructor(){
-    this.keys = new Set();
-    this.justPressed = new Set();
-    this.justReleased = new Set();
-    this.punchQueue = [];
-    this.touchMove = new V3(0,0,0);
-    this.touchActive = false;
-    this.gamepadIndex = null;
-    this.gamepadButtons = {};
-    this.gamepadPrev = {};
-    this.deadzone = 0.18;
-    this.pointerPunch = null;
-    this.initKeyboard();
-    this.initTouch();
-    this.initGamepad();
-  }
-
-  initKeyboard(){
-    window.addEventListener('keydown', e => {
-      // Игнорируем повторы для одиночных действий
-      if (!e.repeat){
-        this.justPressed.add(e.code);
-        const pk = SaveManager.data.keys;
-        const map = {
-          [pk.jab]:'jab', [pk.cross]:'cross', [pk.hookL]:'hookL', [pk.hookR]:'hookR',
-          [pk.uppercutL]:'uppercutL', [pk.uppercutR]:'uppercutR'
-        };
-        if (map[e.code]) this.punchQueue.push(map[e.code]);
-      }
-      this.keys.add(e.code);
-      // Предотвращаем прокрутку и стандартные действия
-      if (['Tab','Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
-      Game.onUserGesture && Game.onUserGesture();
-    }, {passive:false});
-    window.addEventListener('keyup', e => {
-      this.keys.delete(e.code);
-      this.justReleased.add(e.code);
-    });
-    window.addEventListener('blur', () => { this.keys.clear(); this.punchQueue.length = 0; });
-  }
-
-  initTouch(){
-    const base = document.getElementById('stickBase');
-    const knob = document.getElementById('stickKnob');
-    if (!base) return;
-    let stickId = null;
-    let cx = 0, cy = 0, radius = 50;
-    const computeCenter = () => {
-      const r = base.getBoundingClientRect();
-      cx = r.left + r.width/2; cy = r.top + r.height/2; radius = r.width*0.40;
-    };
-    const updateStick = (x, y) => {
-      let dx = x - cx, dy = y - cy;
-      const len = Math.hypot(dx, dy);
-      const maxLen = radius;
-      if (len > maxLen){ dx = dx/len*maxLen; dy = dy/len*maxLen; }
-      knob.style.transform = `translate(${dx}px,${dy}px)`;
-      const nx = dx/maxLen, ny = dy/maxLen;
-      this.touchMove.set(nx, 0, -ny);
-      const dz = this.deadzone;
-      const mag = Math.hypot(nx, ny);
-      if (mag < dz){ this.touchMove.set(0,0,0); }
-      else {
-        const scaled = (mag - dz)/(1-dz)/mag;
-        this.touchMove.set(nx*scaled, 0, -ny*scaled);
-      }
-      this.touchActive = true;
-    };
-    base.addEventListener('pointerdown', e => {
-      e.preventDefault(); base.setPointerCapture(e.pointerId);
-      stickId = e.pointerId;
-      computeCenter();
-      updateStick(e.clientX, e.clientY);
-      knob.style.background = 'radial-gradient(circle at 35% 30%,rgba(255,255,255,.5),rgba(200,206,218,.28))';
-      Game.onUserGesture && Game.onUserGesture();
-    });
-    base.addEventListener('pointermove', e => {
-      if (stickId !== e.pointerId) return;
-      e.preventDefault();
-      updateStick(e.clientX, e.clientY);
-    });
-    const end = e => {
-      if (stickId !== e.pointerId) return;
-      stickId = null;
-      this.touchMove.set(0,0,0);
-      this.touchActive = false;
-      knob.style.transform = 'translate(0,0)';
-      knob.style.background = 'radial-gradient(circle at 35% 30%,rgba(255,255,255,.34),rgba(160,166,178,.16))';
-    };
-    base.addEventListener('pointerup', end);
-    base.addEventListener('pointercancel', end);
-    base.addEventListener('lostpointercapture', end);
-
-    // Кнопки удара
-    const btnMap = [
-      ['tbJab','jab'],['tbCross','cross'],['tbHookL','hookL'],['tbHookR','hookR'],
-      ['tbUpL','uppercutL'],['tbUpR','uppercutR']
-    ];
-    for (const [id, key] of btnMap){
-      const el = document.getElementById(id);
-      if (!el) continue;
-      el.addEventListener('pointerdown', e => {
-        e.preventDefault(); el.setPointerCapture(e.pointerId);
-        el.classList.add('hit');
-        this.punchQueue.push(key);
-        Game.onUserGesture && Game.onUserGesture();
-      });
-      const up = e => { el.classList.remove('hit'); };
-      el.addEventListener('pointerup', up);
-      el.addEventListener('pointercancel', up);
-      el.addEventListener('lostpointercapture', up);
-    }
-    // Блок
-    const tb = document.getElementById('tbBlock');
-    if (tb){
-      let blockPtr = null;
-      tb.addEventListener('pointerdown', e => { e.preventDefault(); tb.setPointerCapture(e.pointerId); tb.classList.add('hit'); this.touchBlock = true; Game.onUserGesture(); });
-      const upB = () => { tb.classList.remove('hit'); this.touchBlock = false; };
-      tb.addEventListener('pointerup', upB);
-      tb.addEventListener('pointercancel', upB);
-      tb.addEventListener('lostpointercapture', upB);
-    }
-    // Уклоны
-    const dl = document.getElementById('tbDodgeL');
-    const dr = document.getElementById('tbDodgeR');
-    if (dl) dl.addEventListener('pointerdown', e => { e.preventDefault(); dl.classList.add('hit'); this.touchDodge = -1; setTimeout(()=>dl.classList.remove('hit'),120); Game.onUserGesture(); });
-    if (dr) dr.addEventListener('pointerdown', e => { e.preventDefault(); dr.classList.add('hit'); this.touchDodge = 1; setTimeout(()=>dr.classList.remove('hit'),120); Game.onUserGesture(); });
-  }
-
-  initGamepad(){
-    window.addEventListener('gamepadconnected', e => {
-      this.gamepadIndex = e.gamepad.index;
-      if (Game.hud) Game.hud.toast('Геймпад подключён: ' + (e.gamepad.id||'').slice(0,28));
-    });
-    window.addEventListener('gamepaddisconnected', e => {
-      this.gamepadIndex = null;
-      if (Game.hud) Game.hud.toast('Геймпад отключён');
-    });
-  }
-
-  pollGamepad(dt){
-    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
-    let pad = null;
-    for (const p of pads){ if (p && p.connected){ pad = p; break; } }
-    this._pad = pad;
-    if (!pad){ this.gamepadMove = null; return; }
-    this.gamepadIndex = pad.index;
-  }
-
-  /* Собирает состояние ввода для игрока */
-  gather(player){
-    const k = SaveManager.data.keys;
-    const mv = new V3(0,0,0);
-    let anyKey = false;
-    if (this.keys.has(k.up)){ mv.z += 1; anyKey = true; }
-    if (this.keys.has(k.down)){ mv.z -= 1; anyKey = true; }
-    if (this.keys.has(k.left)){ mv.x -= 1; anyKey = true; }
-    if (this.keys.has(k.right)){ mv.x += 1; anyKey = true; }
-
-    // Тач-джойстик имеет приоритет, если активен
-    if (this.touchActive && (this.touchMove.x !== 0 || this.touchMove.z !== 0)){
-      mv.copyFrom(this.touchMove); anyKey = true;
-    }
-
-    // Геймпад
-    const pad = this._pad;
-    if (pad){
-      const ax = pad.axes[0] || 0, ay = pad.axes[1] || 0;
-      const dz = this.deadzone;
-      let gx = Math.abs(ax) > dz ? (ax - Math.sign(ax)*dz)/(1-dz) : 0;
-      let gy = Math.abs(ay) > dz ? (ay - Math.sign(ay)*dz)/(1-dz) : 0;
-      if (gx !== 0 || gy !== 0){ mv.x = gx; mv.z = -gy; anyKey = true; }
-      // Кнопки
-      const btn = pad.buttons;
-      const press = (i) => btn[i] && btn[i].pressed;
-      const justPressed = (i) => press(i) && !this.gamepadPrev[i];
-      if (justPressed(0)) this.punchQueue.push('jab');       // A
-      if (justPressed(1)) this.punchQueue.push('cross');    // B
-      if (justPressed(2)) this.punchQueue.push('hookL');    // X
-      if (justPressed(3)) this.punchQueue.push('hookR');    // Y
-      if (justPressed(4)) this.punchQueue.push('uppercutL');// LB
-      if (justPressed(5)) this.punchQueue.push('uppercutR');// RB
-      for (let i=0;i<btn.length;i++) this.gamepadPrev[i] = press(i);
-      if (btn[6] && btn[6].value > 0.4) this.gamepadBlock = true; else this.gamepadBlock = false;
-      if (btn[7] && btn[7].value > 0.4) this.gamepadBlock = true;
-      // правый стик — уклон
-      const rx = pad.axes[2] || 0;
-      if (Math.abs(rx) > 0.55 && !this._gpDodgeLatch){
-        this.touchDodge = rx > 0 ? 1 : -1; this._gpDodgeLatch = true;
-      } else if (Math.abs(rx) < 0.35) this._gpDodgeLatch = false;
-    }
-
-    // Ограничение диагоналей
-    const ml = Math.hypot(mv.x, mv.z);
-    if (ml > 1){ mv.x /= ml; mv.z /= ml; }
-
-    // Очередь ударов — берём максимум один за кадр
-    let punch = null;
-    if (this.punchQueue.length && !player.punch){
-      punch = this.punchQueue.shift();
-      // Ограничим размер очереди
-      if (this.punchQueue.length > 3) this.punchQueue.splice(0, this.punchQueue.length-3);
-    } else if (this.punchQueue.length > 4){
-      this.punchQueue.splice(0, this.punchQueue.length-4);
-    }
-
-    const input = {
-      move: mv,
-      sprint: this.keys.has(k.sprint) || (pad && pad.buttons[10] && pad.buttons[10].pressed),
-      punch,
-      punchQueue: this.punchQueue,
-      blockL: this.keys.has(k.blockL),
-      blockR: this.keys.has(k.blockR),
-      blockBody: this.keys.has(k.block),
-      blockAll: this.keys.has(k.block) || !!this.touchBlock || !!this.gamepadBlock,
-      dodge: null
-    };
-    if (this.keys.has(k.dodgeL)) input.dodge = -1;
-    else if (this.keys.has(k.dodgeR)) input.dodge = 1;
-    else if (this.keys.has(k.dodgeBack)) input.dodge = 2;
-    if (this.touchDodge !== null && this.touchDodge !== undefined){
-      input.dodge = this.touchDodge; this.touchDodge = null;
-    }
-    return input;
-  }
-
-  endFrame(){
-    this.justPressed.clear();
-    this.justReleased.clear();
-  }
-}
-
-/* ======================= HUD ======================= */
-class HUDController {
-  constructor(){
-    this.el = document.getElementById('hud');
-    this.p1hp = document.getElementById('p1hp');
-    this.p2hp = document.getElementById('p2hp');
-    this.p1st = document.getElementById('p1st');
-    this.p2st = document.getElementById('p2st');
-    this.timer = document.getElementById('timer');
-    this.roundLabel = document.getElementById('roundLabel');
-    this.scoreLine = document.getElementById('scoreLine');
-    this.p1name = document.getElementById('p1name');
-    this.p2name = document.getElementById('p2name');
-    this.p1meta = document.getElementById('p1meta');
-    this.p2meta = document.getElementById('p2meta');
-    this.sLand = document.getElementById('sLand');
-    this.sMiss = document.getElementById('sMiss');
-    this.sBlock = document.getElementById('sBlock');
-    this.sFps = document.getElementById('sFps');
-    this.announce = document.getElementById('announce');
-    this.statMini = document.getElementById('statMini');
-    this.toastEl = document.getElementById('toast');
-    this._toastT = null;
-    this.impactFlash = null;
-  }
-
-  show(){ this.el.classList.remove('hidden'); }
-  hide(){ this.el.classList.add('hidden'); }
-
-  setFighters(p, o){
-    this.p1name.textContent = p.def.name;
-    this.p2name.textContent = o.def.name;
-    this.p1meta.textContent = p.def.stance + ' · ' + p.def.height.toFixed(2) + ' м';
-    this.p2meta.textContent = o.def.stance + ' · ' + o.def.height.toFixed(2) + ' м';
-  }
-
-  update(player, opponent){
-    if (!player || !opponent) return;
-    this.p1hp.style.width = (player.health*100).toFixed(1) + '%';
-    this.p2hp.style.width = (opponent.health*100).toFixed(1) + '%';
-    this.p1st.style.width = (player.stamina*100).toFixed(1) + '%';
-    this.p2st.style.width = (opponent.stamina*100).toFixed(1) + '%';
-
-    const total = Game.roundTime;
-    const left = Math.max(0, Math.ceil(Game.timeLeft));
-    const mm = Math.floor(left/60), ss = left % 60;
-    this.timer.textContent = mm + ':' + String(ss).padStart(2,'0');
-    this.timer.classList.toggle('low', left <= 10);
-    this.roundLabel.textContent = 'РАУНД ' + Game.round + '/' + Game.rounds;
-    this.scoreLine.textContent = Game.scores[0] + ' : ' + Game.scores[1];
-
-    this.sLand.textContent = 'ПОПАДАНИЙ ' + player.stats.landed;
-    this.sMiss.textContent = 'ПРОМАХОВ ' + player.stats.missed;
-    this.sBlock.textContent = 'БЛОКОВ ' + player.stats.blockedIncoming;
-    this.sFps.textContent = Math.round(Game.fpsSmoothed) + ' FPS';
-
-    const s = SaveManager.data.settings;
-    this.statMini.style.display = s.showMiniStats ? 'flex' : 'none';
-  }
-
-  showAnnounce(text, sub, dur){
-    this.announce.innerHTML = text + (sub ? '<small>'+sub+'</small>' : '');
-    this.announce.classList.add('show');
-    clearTimeout(this._annT);
-    this._annT = setTimeout(()=>this.announce.classList.remove('show'), dur || 1500);
-  }
-  hideAnnounce(){ this.announce.classList.remove('show'); }
-
-  showImpact(power, zone, isPlayerAttack){
-    // Простая визуальная вспышка (без крови и жестокости)
-    if (power < 0.25) return;
-    const c = document.getElementById('renderCanvas');
-    if (!c) return;
-    c.style.transition = 'none';
-    const col = zone === 'head' ? 'rgba(255,255,255,0.10)' : (zone === 'block' ? 'rgba(120,180,255,0.09)' : 'rgba(255,220,150,0.09)');
-    c.style.boxShadow = 'inset 0 0 90px ' + col;
-    clearTimeout(this._flashT);
-    this._flashT = setTimeout(()=>{ c.style.boxShadow = 'none'; }, 90);
-  }
-
-  toast(msg, dur){
-    this.toastEl.textContent = msg;
-    this.toastEl.classList.add('show');
-    clearTimeout(this._toastT);
-    this._toastT = setTimeout(()=>this.toastEl.classList.remove('show'), dur || 2200);
-  }
-}
-
-/* ======================= Меню ======================= */
-const MenuUI = {
-  current: 'main',
-  init(){
-    document.querySelectorAll('[data-nav]').forEach(b => {
-      b.addEventListener('click', () => {
-        if (Game.audio) Game.audio.ui();
-        this.nav(b.dataset.nav);
-      });
-    });
-    this.buildFight();
-    this.buildSelect();
-    this.buildSettings();
-    this.buildControls();
-    this.buildStats();
-    this.buildTraining();
-    this.buildAbout();
-  },
-  show(id){
-    const ids = ['menuMain','menuFight','menuSelect','menuSettings','menuControls','menuStats','menuTraining','menuAbout','menuResult'];
-    for (const i of ids){
-      const el = document.getElementById(i);
-      if (el) el.classList.toggle('hidden', i !== id);
-    }
-    this.current = id;
-  },
-  nav(which){
-    switch(which){
-      case 'quick': this.startQuickFight(); break;
-      case 'fight': this.show('menuFight'); this.buildFight(); break;
-      case 'select': this.show('menuSelect'); this.buildSelect(); break;
-      case 'settings': this.show('menuSettings'); this.buildSettings(); break;
-      case 'controls': this.show('menuControls'); this.buildControls(); break;
-      case 'stats': this.show('menuStats'); this.buildStats(); break;
-      case 'training': this.show('menuTraining'); this.buildTraining(); break;
-      case 'about': this.show('menuAbout'); break;
-      case 'back': this.show('menuMain'); break;
-      case 'menu': Game.returnToMenu(); break;
-    }
-  },
-  startQuickFight(){
-    const p = SaveManager.data.profile;
-    Game.startFight({
-      playerId: p.fighter, opponentId: p.opponent,
-      rounds: p.rounds, roundTime: p.roundTime,
-      aiStyle: p.aiStyle, aiDiff: p.aiDiff
-    });
-  },
-  buildFight(){
-    const el = document.getElementById('menuFight');
-    const p = SaveManager.data.profile;
-    el.innerHTML = `
-      <div class="panel">
-        <h2>Настройка боя</h2>
-        <div class="row"><label>Количество раундов</label>
-          <div class="seg" data-seg="rounds">
-            ${[1,3,5,8,10].map(n=>`<button data-v="${n}" class="${p.rounds===n?'on':''}">${n}</button>`).join('')}
-          </div></div>
-        <div class="row"><label>Длительность раунда (сек)</label>
-          <div class="seg" data-seg="roundTime">
-            ${[60,90,120,180,240].map(n=>`<button data-v="${n}" class="${p.roundTime===n?'on':''}">${n}</button>`).join('')}
-          </div></div>
-        <div class="row"><label>Стиль соперника</label>
-          <select id="selStyle">
-            ${Object.entries({technical:'Технический',aggressive:'Агрессивный',counter:'Контратакующий',defensive:'Защитный'})
-              .map(([k,v])=>`<option value="${k}" ${p.aiStyle===k?'selected':''}>${v}</option>`).join('')}
-          </select></div>
-        <div class="row"><label>Сложность</label>
-          <div class="seg" data-seg="aiDiff">
-            ${['Лёгкая','Средняя','Высокая'].map((n,i)=>`<button data-v="${i}" class="${p.aiDiff===i?'on':''}">${n}</button>`).join('')}
-          </div></div>
-        <div class="row" style="justify-content:center;gap:10px;padding-top:14px;">
-          <button class="mbtn primary" style="flex:1;max-width:260px;" id="btnStartFight">НАЧАТЬ БОЙ</button>
-        </div>
-        <div class="row" style="justify-content:center;">
-          <button class="mini" data-nav="back">← Назад в меню</button>
-        </div>
-      </div>`;
-    el.querySelectorAll('.seg').forEach(seg => {
-      seg.querySelectorAll('button').forEach(b => {
-        b.addEventListener('click', () => {
-          const key = seg.dataset.seg;
-          const v = isNaN(+b.dataset.v) ? b.dataset.v : +b.dataset.v;
-          SaveManager.data.profile[key] = v;
-          SaveManager.save();
-          seg.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
-          b.classList.add('on');
-          Game.audio && Game.audio.ui();
+        // Initialize Game once DOM content is ready
+        window.addEventListener('DOMContentLoaded', () => {
+            window.gameInstance = new GameEngine();
         });
-      });
-    });
-    el.querySelector('#selStyle').addEventListener('change', e => {
-      SaveManager.data.profile.aiStyle = e.target.value; SaveManager.save();
-    });
-    el.querySelector('#btnStartFight').addEventListener('click', () => this.startQuickFight());
-    el.querySelectorAll('[data-nav]').forEach(b => b.addEventListener('click', () => this.nav(b.dataset.nav)));
-  },
-  buildSelect(){
-    const el = document.getElementById('menuSelect');
-    const p = SaveManager.data.profile;
-    const build = () => {
-      el.innerHTML = `
-        <div class="panel">
-          <h2>Выбор боксёра</h2>
-          <div class="fighters" id="fList"></div>
-          <div style="margin-top:16px;font-size:12px;color:#8a8f9b;letter-spacing:.1em;">СОПЕРНИК</div>
-          <div class="fighters" id="oList" style="margin-top:8px;"></div>
-          <div class="row" style="justify-content:center;gap:10px;padding-top:16px;">
-            <button class="mbtn primary" style="flex:1;max-width:260px;" id="btnStartFromSelect">НАЧАТЬ БОЙ</button>
-          </div>
-          <div class="row" style="justify-content:center;">
-            <button class="mini" data-nav="back">← Назад в меню</button>
-          </div>
-        </div>`;
-      const card = (f, selected, kind) => {
-        const st = ['speed','power','stamina','accuracy','defense'];
-        const names = {speed:'Скорость',power:'Сила',stamina:'Выносл.',accuracy:'Точность',defense:'Защита'};
-        return `<div class="fcard ${selected?'sel':''}" data-id="${f.id}" data-kind="${kind}">
-          <h3>${f.name}</h3>
-          <div class="st">${f.stance} · ${f.height.toFixed(2)} м · ${f.reach.toFixed(2)} м · ${f.mass} кг</div>
-          ${st.map(s=>`<div class="bar"><span class="n">${names[s]}</span><span class="t"><span class="f" style="width:${(f[s]*100).toFixed(0)}%"></span></span></div>`).join('')}
-        </div>`;
-      };
-      const fl = el.querySelector('#fList');
-      const ol = el.querySelector('#oList');
-      fl.innerHTML = FIGHTERS.map(f => card(f, f.id === p.fighter, 'player')).join('');
-      ol.innerHTML = FIGHTERS.map(f => card(f, f.id === p.opponent, 'opp')).join('');
-      el.querySelectorAll('.fcard').forEach(c => {
-        c.addEventListener('click', () => {
-          if (c.dataset.kind === 'player'){
-            p.fighter = c.dataset.id;
-            Game.updatePreviewFighters();
-          } else {
-            p.opponent = c.dataset.id;
-          }
-          SaveManager.save();
-          Game.audio && Game.audio.ui();
-          build();
-        });
-      });
-      el.querySelector('#btnStartFromSelect').addEventListener('click', () => this.startQuickFight());
-      el.querySelectorAll('[data-nav]').forEach(b => b.addEventListener('click', () => this.nav(b.dataset.nav)));
-    };
-    build();
-  },
-  buildSettings(){
-    const el = document.getElementById('menuSettings');
-    const s = SaveManager.data.settings;
-    const render = () => {
-      el.innerHTML = `
-        <div class="panel">
-          <h2>Настройки графики</h2>
-          <div class="row"><label>Профиль качества</label>
-            <div class="seg" data-seg="quality">
-              ${[['auto','Авто'],['low','Низкий'],['medium','Средний'],['high','Высокий'],['ultra','Максимум']]
-                .map(([k,v])=>`<button data-v="${k}" class="${s.quality===k?'on':''}">${v}</button>`).join('')}
-            </div></div>
-          <div class="row"><label>Разрешение рендеринга</label>
-            <input type="range" min="0.55" max="1.25" step="0.05" value="${s.renderScale}" data-set="renderScale">
-            <span class="val">${Math.round(s.renderScale*100)}%</span></div>
-          <div class="row"><label>Тени</label>
-            <div class="seg" data-seg="shadows">
-              <button data-v="1" class="${s.shadows?'on':''}">Вкл</button>
-              <button data-v="0" class="${!s.shadows?'on':''}">Выкл</button>
-            </div></div>
-          <div class="row"><label>Сглаживание</label>
-            <div class="seg" data-seg="antialias">
-              <button data-v="1" class="${s.antialias?'on':''}">Вкл</button>
-              <button data-v="0" class="${!s.antialias?'on':''}">Выкл</button>
-            </div></div>
-          <div class="row"><label>Дальность прорисовки</label>
-            <input type="range" min="0.5" max="1.4" step="0.1" value="${s.drawDistance}" data-set="drawDistance">
-            <span class="val">${Math.round(s.drawDistance*100)}%</span></div>
-          <div class="row"><label>Зрители</label>
-            <div class="seg" data-seg="crowd">
-              <button data-v="1" class="${s.crowd?'on':''}">Вкл</button>
-              <button data-v="0" class="${!s.crowd?'on':''}">Выкл</button>
-            </div></div>
-          <div class="row"><label>Постобработка</label>
-            <div class="seg" data-seg="postfx">
-              <button data-v="1" class="${s.postfx?'on':''}">Вкл</button>
-              <button data-v="0" class="${!s.postfx?'on':''}">Выкл</button>
-            </div></div>
-          <div class="row"><label>Ограничение FPS</label>
-            <div class="seg" data-seg="fpsLimit">
-              ${[0,30,60,120].map(n=>`<button data-v="${n}" class="${s.fpsLimit===n?'on':''}">${n===0?'Нет':n}</button>`).join('')}
-            </div></div>
-          <div class="row"><label>Показывать FPS</label>
-            <div class="seg" data-seg="showFps">
-              <button data-v="1" class="${s.showFps?'on':''}">Вкл</button>
-              <button data-v="0" class="${!s.showFps?'on':''}">Выкл</button>
-            </div></div>
-        </div>
-        <div class="panel">
-          <h2>Звук</h2>
-          <div class="row"><label>Общая громкость</label>
-            <input type="range" min="0" max="1" step="0.05" value="${s.volumeMaster}" data-set="volumeMaster">
-            <span class="val">${Math.round(s.volumeMaster*100)}%</span></div>
-          <div class="row"><label>Эффекты (удары, шаги)</label>
-            <input type="range" min="0" max="1" step="0.05" value="${s.volumeFx}" data-set="volumeFx">
-            <span class="val">${Math.round(s.volumeFx*100)}%</span></div>
-          <div class="row"><label>Атмосфера (публика)</label>
-            <input type="range" min="0" max="1" step="0.05" value="${s.volumeCrowd}" data-set="volumeCrowd">
-            <span class="val">${Math.round(s.volumeCrowd*100)}%</span></div>
-          <div class="row"><label>Интерфейс</label>
-            <input type="range" min="0" max="1" step="0.05" value="${s.volumeUI}" data-set="volumeUI">
-            <span class="val">${Math.round(s.volumeUI*100)}%</span></div>
-        </div>
-        <div class="panel">
-          <div class="row" style="justify-content:center;gap:10px;">
-            <button class="mini" id="btnResetSettings">Сбросить настройки</button>
-            <button class="mini" data-nav="back">← Назад в меню</button>
-          </div>
-        </div>`;
-
-      el.querySelectorAll('[data-seg]').forEach(seg => {
-        seg.querySelectorAll('button').forEach(b => {
-          b.addEventListener('click', () => {
-            const key = seg.dataset.seg;
-            let v = b.dataset.v;
-            if (v === '1') v = true; else if (v === '0') v = false;
-            else if (!isNaN(+v) && key === 'fpsLimit') v = +v;
-            s[key] = v;
-            SaveManager.save();
-            Game.applySettings();
-            Game.audio && Game.audio.ui();
-            render();
-          });
-        });
-      });
-      el.querySelectorAll('input[type=range]').forEach(inp => {
-        inp.addEventListener('input', () => {
-          const key = inp.dataset.set;
-          s[key] = parseFloat(inp.value);
-          inp.nextElementSibling.textContent = Math.round(s[key]*100) + '%';
-          Game.applySettings();
-        });
-        inp.addEventListener('change', () => SaveManager.save());
-      });
-      const rb = el.querySelector('#btnResetSettings');
-      if (rb) rb.addEventListener('click', () => {
-        const def = SaveManager.defaults().settings;
-        Object.assign(s, def);
-        SaveManager.save(); Game.applySettings(); render();
-      });
-      el.querySelectorAll('[data-nav]').forEach(b => b.addEventListener('click', () => this.nav(b.dataset.nav)));
-    };
-    render();
-  },
-  buildControls(){
-    const el = document.getElementById('menuControls');
-    const names = {
-      up:'Вперёд', down:'Назад', left:'Влево', right:'Вправо',
-      jab:'Джеб (левая)', cross:'Правый прямой', hookL:'Левый хук', hookR:'Правый хук',
-      uppercutL:'Левый апперкот', uppercutR:'Правый апперкот',
-      block:'Общий блок', blockL:'Блок левой', blockR:'Блок правой',
-      dodgeL:'Уклон влево', dodgeR:'Уклон вправо', dodgeBack:'Уклон назад',
-      sprint:'Ускорение', pause:'Пауза'
-    };
-    let listening = null;
-    const render = () => {
-      const k = SaveManager.data.keys;
-      el.innerHTML = `
-        <div class="panel">
-          <h2>Клавиатура</h2>
-          ${Object.keys(names).map(key => `
-            <div class="row"><label>${names[key]}</label>
-              <button class="mini keybtn ${listening===key?'listening':''}" data-key="${key}">${keyName(k[key])}</button>
-            </div>`).join('')}
-          <div class="row" style="justify-content:center;gap:10px;padding-top:12px;">
-            <button class="mini" id="btnResetKeys">Сбросить раскладку</button>
-            <button class="mini" data-nav="back">← Назад в меню</button>
-          </div>
-        </div>
-        <div class="panel">
-          <h2>Геймпад</h2>
-          <div class="row"><label>Подключение</label><span class="val" id="gpState">${navigator.getGamepads && Array.from(navigator.getGamepads()).some(p=>p&&p.connected) ? 'Подключён' : 'Не найден'}</span></div>
-          <div class="row"><label>Мёртвая зона стика</label>
-            <input type="range" min="0.05" max="0.4" step="0.01" value="${Game.input ? Game.input.deadzone : 0.18}" id="gpDead">
-            <span class="val">${(Game.input ? Game.input.deadzone : 0.18).toFixed(2)}</span></div>
-          <div style="font-size:11.5px;color:#8a8f9b;line-height:1.9;padding-top:8px;">
-            <b>A / B / X / Y</b> — джеб, правый прямой, левый хук, правый хук<br>
-            <b>LB / RB</b> — левый / правый апперкот<br>
-            <b>LT / RT</b> — блок<br>
-            <b>Левый стик</b> — движение, <b>правый стик</b> — уклон
-          </div>
-        </div>
-        <div class="panel">
-          <h2>Сенсорное управление</h2>
-          <div style="font-size:11.5px;color:#8a8f9b;line-height:1.9;">
-            <b>Левый нижний угол</b> — виртуальный джойстик движения.<br>
-            <b>Правая часть</b> — кнопки ударов, блок и уклоны.<br>
-            Кнопки поддерживают несколько одновременных касаний.
-          </div>
-        </div>`;
-      el.querySelectorAll('[data-key]').forEach(b => {
-        b.addEventListener('click', () => { listening = b.dataset.key; render(); });
-      });
-      el.querySelectorAll('[data-nav]').forEach(b => b.addEventListener('click', () => this.nav(b.dataset.nav)));
-      const rb = el.querySelector('#btnResetKeys');
-      if (rb) rb.addEventListener('click', () => {
-        SaveManager.data.keys = SaveManager.defaults().keys;
-        SaveManager.save(); render();
-      });
-      const gd = el.querySelector('#gpDead');
-      if (gd) gd.addEventListener('input', () => {
-        if (Game.input) Game.input.deadzone = parseFloat(gd.value);
-        gd.nextElementSibling.textContent = parseFloat(gd.value).toFixed(2);
-      });
-    };
-    render();
-    window.addEventListener('keydown', e => {
-      if (!listening) return;
-      e.preventDefault();
-      SaveManager.data.keys[listening] = e.code;
-      SaveManager.save();
-      listening = null;
-      render();
-    }, true);
-  },
-  buildStats(){
-    const el = document.getElementById('menuStats');
-    const s = SaveManager.data.stats;
-    const rows = (s.history||[]).slice(-12).reverse();
-    el.innerHTML = `
-      <div class="panel">
-        <h2>Статистика</h2>
-        <div class="row"><label>Боёв проведено</label><span class="val">${s.fights}</span></div>
-        <div class="row"><label>Побед</label><span class="val">${s.wins}</span></div>
-        <div class="row"><label>Поражений</label><span class="val">${s.losses}</span></div>
-        <div class="row"><label>Ничьих</label><span class="val">${s.draws}</span></div>
-        <div class="row"><label>Всего нанесено ударов</label><span class="val">${s.thrown}</span></div>
-        <div class="row"><label>Всего точных попаданий</label><span class="val">${s.landed}</span></div>
-        <div class="row"><label>Точность</label><span class="val">${s.thrown ? Math.round(s.landed/s.thrown*100) : 0}%</span></div>
-      </div>
-      <div class="panel">
-        <h2>Последние бои</h2>
-        ${rows.length ? rows.map(h => `
-          <div class="row"><label>${h.date} · ${h.player} vs ${h.opp}</label>
-          <span class="val">${h.result} ${h.score}</span></div>`).join('')
-          : '<div style="color:#6b707a;font-size:12.5px;padding:8px 0;">Пока нет записей.</div>'}
-      </div>
-      <div class="panel">
-        <div class="row" style="justify-content:center;gap:10px;">
-          <button class="mini" id="btnClearStats">Очистить статистику</button>
-          <button class="mini" data-nav="back">← Назад в меню</button>
-        </div>
-      </div>`;
-    const cb = el.querySelector('#btnClearStats');
-    if (cb) cb.addEventListener('click', () => {
-      SaveManager.data.stats = SaveManager.defaults().stats;
-      SaveManager.save(); this.buildStats();
-    });
-    el.querySelectorAll('[data-nav]').forEach(b => b.addEventListener('click', () => this.nav(b.dataset.nav)));
-  },
-  buildTraining(){
-    const el = document.getElementById('menuTraining');
-    el.innerHTML = `
-      <div class="panel">
-        <h2>Режим тренировки</h2>
-        <div style="font-size:12.5px;color:#a9aeb8;line-height:1.8;">
-          Свободное перемещение по рингу, соперник не атакует. Доступен разбор техники,
-          замедление времени и визуализация хитбоксов.
-        </div>
-        <div class="row" style="padding-top:14px;"><label>Манекен движется</label>
-          <div class="seg" data-t="dummyMove">
-            <button data-v="1" class="on">Да</button><button data-v="0">Нет</button>
-          </div></div>
-        <div class="row"><label>Хитбоксы</label>
-          <div class="seg" data-t="hitboxes">
-            <button data-v="1">Вкл</button><button data-v="0" class="on">Выкл</button>
-          </div></div>
-        <div class="row"><label>Траектория перчаток</label>
-          <div class="seg" data-t="trails">
-            <button data-v="1">Вкл</button><button data-v="0" class="on">Выкл</button>
-          </div></div>
-        <div class="row"><label>Скорость времени</label>
-          <div class="seg" data-t="slow">
-            ${[['1','1×'],['0.5','0.5×'],['0.25','0.25×'],['0.1','0.1×']].map(([k,v])=>`<button data-v="${k}" class="${k==='1'?'on':''}">${v}</button>`).join('')}
-          </div></div>
-        <div class="row" style="justify-content:center;gap:10px;padding-top:16px;">
-          <button class="mbtn primary" style="flex:1;max-width:260px;" id="btnStartTraining">НАЧАТЬ ТРЕНИРОВКУ</button>
-        </div>
-        <div class="row" style="justify-content:center;">
-          <button class="mini" data-nav="back">← Назад в меню</button>
-        </div>
-      </div>`;
-    const opts = { dummyMove:true, hitboxes:false, trails:false, slow:1 };
-    el.querySelectorAll('[data-t]').forEach(seg => {
-      seg.querySelectorAll('button').forEach(b => {
-        b.addEventListener('click', () => {
-          const key = seg.dataset.t;
-          let v = b.dataset.v;
-          if (v === '1') v = true; else if (v === '0') v = false; else v = parseFloat(v);
-          opts[key] = v;
-          seg.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
-          b.classList.add('on');
-        });
-      });
-    });
-    el.querySelector('#btnStartTraining').addEventListener('click', () => {
-      Game.startTraining(opts);
-    });
-    el.querySelectorAll('[data-nav]').forEach(b => b.addEventListener('click', () => this.nav(b.dataset.nav)));
-  },
-  buildAbout(){
-    const el = document.getElementById('menuAbout');
-    el.innerHTML = `
-      <div class="panel">
-        <h2>Об игре</h2>
-        <div style="font-size:12.5px;color:#a9aeb8;line-height:1.85;">
-          <b>APEX RING</b> — процедурный симулятор бокса, работающий целиком в одном HTML-файле.<br><br>
-          Движок: <b>Babylon.js</b> (WebGL). Звук: <b>Web Audio API</b> (полный синтез, без внешних файлов).
-          Сохранения: <b>LocalStorage</b>. Управление: клавиатура, сенсор, геймпад.<br><br>
-          Модели боксёров строятся процедурно и анимируются через суставную иерархию с двухкостной IK
-          для рук и ног. Правый прямой удар включает реальную работу задней ноги: разгрузку пятки,
-          поворот стопы на передней части, вращение таза, передачу импульса через корпус и только затем
-          выдвижение руки.<br><br>
-          Для стабильной работы CDN и звука рекомендуется открывать файл через локальный HTTP-сервер.
-          При открытии через <b>file://</b> часть функций браузера может быть ограничена.
-        </div>
-        <div class="row" style="justify-content:center;padding-top:16px;">
-          <button class="mini" data-nav="back">← Назад в меню</button>
-        </div>
-      </div>`;
-    el.querySelectorAll('[data-nav]').forEach(b => b.addEventListener('click', () => this.nav(b.dataset.nav)));
-  },
-  showResult(data){
-    const el = document.getElementById('menuResult');
-    el.innerHTML = `
-      <div class="panel">
-        <h2>Итог боя</h2>
-        <div style="text-align:center;font-size:26px;font-weight:800;letter-spacing:.14em;margin:6px 0 4px;">${data.title}</div>
-        <div style="text-align:center;font-size:12px;color:#8a8f9b;letter-spacing:.2em;margin-bottom:18px;">${data.reason}</div>
-        <div class="row"><label>${data.playerName}</label><span class="val">${data.scoreP} : ${data.scoreO}</span></div>
-        <div class="row"><label>Точных попаданий</label><span class="val">${data.landedP} — ${data.landedO}</span></div>
-        <div class="row"><label>Нанесено ударов</label><span class="val">${data.thrownP} — ${data.thrownO}</span></div>
-        <div class="row"><label>Эффективность</label><span class="val">${data.effP}% — ${data.effO}%</span></div>
-        <div class="row"><label>Заблокировано ударов</label><span class="val">${data.blockP} — ${data.blockO}</span></div>
-        <div class="row" style="justify-content:center;gap:10px;padding-top:16px;">
-          <button class="mbtn primary" style="flex:1;max-width:220px;" id="btnRematch">НОВЫЙ БОЙ</button>
-          <button class="mini" data-nav="menu">← В меню</button>
-        </div>
-      </div>`;
-    this.show('menuResult');
-    const rb = el.querySelector('#btnRematch');
-    if (rb) rb.addEventListener('click', () => this.startQuickFight());
-    el.querySelectorAll('[data-nav]').forEach(b => b.addEventListener('click', () => this.nav(b.dataset.nav)));
-  }
-};
-function keyName(code){
-  if (!code) return '—';
-  return code.replace('Key','').replace('Digit','').replace('ShiftLeft','L-SHIFT').replace('ShiftRight','R-SHIFT')
-    .replace('ControlLeft','L-CTRL').replace('ControlRight','R-CTRL').replace('Space','ПРОБЕЛ')
-    .replace('ArrowUp','↑').replace('ArrowDown','↓').replace('ArrowLeft','←').replace('ArrowRight','→');
-}
-
-/* ======================= GameManager ======================= */
-class GameManager {
-  constructor(){ this.audio = new AudioManager(); }
-
-  async boot(){
-    if (typeof BABYLON === 'undefined'){
-      document.getElementById('fatal').classList.add('show');
-      document.getElementById('loader').classList.add('hidden');
-      return;
-    }
-    const canvas = document.getElementById('renderCanvas');
-    this.canvas = canvas;
-
-    const s = SaveManager.data.settings;
-    let engine;
-    try {
-      engine = new BABYLON.Engine(canvas, s.antialias, { preserveDrawingBuffer:false, stencil:false, disableWebGL2Support:false }, true);
-    } catch(e){
-      try {
-        engine = new BABYLON.Engine(canvas, false, {}, true);
-      } catch(e2){
-        document.getElementById('fatal').classList.add('show');
-        document.getElementById('fatalMsg').textContent = 'WebGL недоступен в этом браузере. Обновите браузер или включите аппаратное ускорение.';
-        document.getElementById('loader').classList.add('hidden');
-        return;
-      }
-    }
-    this.engine = engine;
-    this.engine.setHardwareScalingLevel(1 / clamp(s.renderScale, 0.4, 1.6));
-
-    const scene = new BABYLON.Scene(engine);
-    this.scene = scene;
-    scene.clearColor = new BABYLON.Color4(0.028, 0.031, 0.038, 1);
-    scene.ambientColor = new BABYLON.Color3(0.10, 0.10, 0.12);
-    scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
-    scene.fogDensity = 0.016;
-    scene.fogColor = new BABYLON.Color3(0.028, 0.031, 0.038);
-
-    // Освещение
-    const hemi = new BABYLON.HemisphericLight('hemi', new V3(0,1,0), scene);
-    hemi.intensity = 0.30;
-    hemi.diffuse = new BABYLON.Color3(0.72, 0.75, 0.82);
-    hemi.groundColor = new BABYLON.Color3(0.10, 0.10, 0.13);
-
-    this.shadowGen = null;
-    if (s.shadows){
-      const key = new BABYLON.SpotLight('keyLight', new V3(2.5, 6.2, 1.5), new V3(0,-1,-0.25), 1.55, 12, scene);
-      key.intensity = 1.35;
-      key.diffuse = new BABYLON.Color3(1.0, 0.97, 0.90);
-      key.position = new V3(2.5, 6.2, 1.5);
-      this.shadowGen = new BABYLON.ShadowGenerator(1024, key);
-      this.shadowGen.useBlurExponentialShadowMap = true;
-      this.shadowGen.blurKernel = 12;
-      this.shadowGen.darkness = 0.55;
-      this.keyLight = key;
-    }
-    // Заполняющие источники (без теней)
-    const fill1 = new BABYLON.PointLight('fill1', new V3(-3.2, 4.4, 3.0), scene);
-    fill1.intensity = 0.55; fill1.diffuse = new BABYLON.Color3(0.85,0.88,1.0);
-    fill1.range = 16;
-    const fill2 = new BABYLON.PointLight('fill2', new V3(3.2, 4.4, -3.0), scene);
-    fill2.intensity = 0.55; fill2.diffuse = new BABYLON.Color3(1.0,0.90,0.82);
-    fill2.range = 16;
-    this.scene.lights.forEach(l => { if (l !== key) l.range = 18; });
-
-    // Построение арены
-    Ring.instance = new RingController(scene);
-    this.ring = Ring.instance;
-
-    // Бойцы
-    this.buildFighters();
-
-    // Камера
-    this.camera = new CameraController(scene, canvas);
-
-    // Интерфейс
-    this.hud = new HUDController();
-    this.input = new InputManager();
-
-    // Меню
-    MenuUI.init();
-
-    // Настройки
-    this.applySettings();
-
-    // Запуск
-    scene.registerBeforeRender(() => this.renderLoop());
-
-    engine.runRenderLoop(() => {
-      if (!this.shouldRender()) return;
-      scene.render();
-    });
-
-    window.addEventListener('resize', () => engine.resize());
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden){ this.input.keys.clear(); this.input.punchQueue.length = 0; }
-    });
-
-    // Инициализация аудио по первому жесту
-    this._audioInit = false;
-    this.onUserGesture();
-
-    document.getElementById('loader').classList.add('hidden');
-    this.state = 'menu';
-    MenuUI.show('menuMain');
-    this.startMenuIdle();
-  }
-
-  onUserGesture(){
-    if (!this._audioInit && this.audio){
-      this.audio.init();
-      this._audioInit = true;
-    }
-    if (this.audio) this.audio.resume();
-  }
-
-  buildFighters(){
-    const scene = this.scene;
-    const p = SaveManager.data.profile;
-    const pd = FIGHTERS.find(f=>f.id===p.fighter) || FIGHTERS[0];
-    const od = FIGHTERS.find(f=>f.id===p.opponent) || FIGHTERS[1];
-
-    this.playerRig = new FighterRig(scene, pd, {});
-    this.oppRig = new FighterRig(scene, od, {});
-
-    this.player = new FighterController(scene, this.playerRig, pd, true);
-    this.opponent = new FighterController(scene, this.oppRig, od, false);
-    this.ai = new OpponentAI(this.opponent, p.aiStyle, p.aiDiff);
-
-    this.player.resetFightState(new V3(0,0,-0.85), 0);
-    this.opponent.resetFightState(new V3(0,0, 0.85), Math.PI);
-
-    // Тени
-    if (this.shadowGen){
-      for (const m of [...this.playerRig.meshes, ...this.oppRig.meshes]){
-        try { this.shadowGen.addShadowCaster(m); } catch(e){}
-      }
-    }
-    this.hud.setFighters(this.player, this.opponent);
-  }
-
-  rebuildFighters(){
-    if (this.playerRig){ this.playerRig.meshes.forEach(m=>m.dispose()); this.playerRig.root.dispose(); }
-    if (this.oppRig){ this.oppRig.meshes.forEach(m=>m.dispose()); this.oppRig.root.dispose(); }
-    // чистим отладочные меши
-    ['hbHead','hbBody','hbGloveL','hbGloveR'].forEach(k => {
-      [this.playerRig, this.oppRig].forEach(r => { if (r && r[k]) r[k].dispose(); });
-    });
-    this.buildFighters();
-  }
-
-  updatePreviewFighters(){
-    // Обновляем модель игрока в фоне меню
-    const p = SaveManager.data.profile;
-    const pd = FIGHTERS.find(f=>f.id===p.fighter) || FIGHTERS[0];
-    if (this.player.def.id !== pd.id){
-      this.rebuildFighters();
-      this.startMenuIdle();
-    }
-  }
-
-  applySettings(){
-    const s = SaveManager.data.settings;
-    if (this.engine){
-      this.engine.setHardwareScalingLevel(1 / clamp(s.renderScale, 0.4, 1.6));
-      if (this.engine.setAntialias) { /* сглаживание задаётся при создании */ }
-    }
-    if (this.scene){
-      const dl = 20 + 60 * s.drawDistance;
-      this.scene.getActiveMeshes().forEach(m => {});
-      this.camera.cam.maxZ = dl;
-      this.scene.fogDensity = 0.016 / clamp(s.drawDistance,0.5,1.4);
-      this.scene.lights.forEach(l => { if (l.name !== 'hemi') l.shadowEnabled = s.shadows; });
-      if (this.shadowGen) this.shadowGen.getShadowMap().renderList = s.shadows ? this.shadowGen.getShadowMap().renderList : [];
-    }
-    if (this.ring && this.ring.crowdRoot){
-      this.ring.crowdRoot.setEnabled(s.crowd);
-    }
-    if (this.audio) this.audio.applyVolumes();
-    if (this.shadowGen){
-      this.shadowGen.getShadowMap().renderList = [];
-      if (s.shadows){
-        for (const m of [...this.playerRig.meshes, ...this.oppRig.meshes]){
-          try { this.shadowGen.addShadowCaster(m); } catch(e){}
-        }
-      }
-    }
-  }
-
-  shouldRender(){
-    const s = SaveManager.data.settings;
-    if (s.fpsLimit > 0){
-      const now = performance.now();
-      if (!this._lastFrameTime) this._lastFrameTime = now;
-      const interval = 1000 / s.fpsLimit;
-      if (now - this._lastFrameTime < interval - 0.5) return false;
-      this._lastFrameTime = now;
-    }
-    return true;
-  }
-
-  /* ---------- Режимы ---------- */
-  startMenuIdle(){
-    this.state = 'menu';
-    this.trainingMode = false;
-    this.hud.hide();
-    document.getElementById('touch').classList.remove('on');
-    this.player.resetFightState(new V3(0,0,-0.85), 0);
-    this.opponent.resetFightState(new V3(0,0, 0.85), Math.PI);
-    this.player.health = 1; this.opponent.health = 1;
-    this.ai.reset();
-    this.playerRig.setPoseVisible(false);
-    this.oppRig.setPoseVisible(false);
-    this.setTrailsVisible(false);
-    this.camera.mode = 4;
-    this.camera.orbit = 0.4;
-  }
-
-  startTraining(opts){
-    this.state = 'training';
-    this.trainingMode = true;
-    this.trainingOpts = Object.assign({ dummyMove:true, hitboxes:false, trails:false, slow:1 }, opts);
-    this.hud.show();
-    this.hud.setFighters(this.player, this.opponent);
-    document.getElementById('menu').style.display = 'none';
-    this.player.resetFightState(new V3(0,0,-1.1), 0);
-    this.opponent.resetFightState(new V3(0,0, 1.1), Math.PI);
-    this.player.stamina = 1; this.player.fatigueArms = 0; this.player.fatigueLegs = 0; this.player.fatigueCore = 0;
-    this.opponent.stamina = 1; this.opponent.fatigueArms = 0; this.opponent.fatigueLegs = 0; this.opponent.fatigueCore = 0;
-    this.player.health = 1; this.opponent.health = 1;
-    this.player.headHealth = 1; this.player.bodyHealth = 1;
-    this.opponent.headHealth = 1; this.opponent.bodyHealth = 1;
-    Game.slowMo = this.trainingOpts.slow;
-    this.playerRig.setPoseVisible(!!this.trainingOpts.hitboxes);
-    this.oppRig.setPoseVisible(!!this.trainingOpts.hitboxes);
-    this.setTrailsVisible(!!this.trainingOpts.trails);
-    this.camera.mode = 0;
-    this.ai.reset();
-    this.hud.showAnnounce('ТРЕНИРОВКА', 'TAB — выход в меню', 2400);
-    if (this.isTouchDevice()) document.getElementById('touch').classList.add('on');
-  }
-
-  startFight(cfg){
-    this.state = 'intro';
-    this.trainingMode = false;
-    this.rounds = cfg.rounds || 3;
-    this.roundTime = cfg.roundTime || 180;
-    this.round = 1;
-    this.timeLeft = this.roundTime;
-    this.scores = [0,0];
-    this.roundScores = [];
-    this.playerScoreTotal = 0;
-    this.oppScoreTotal = 0;
-
-    // Пересобираем бойцов под выбранных персонажей
-    SaveManager.data.profile.fighter = cfg.playerId;
-    SaveManager.data.profile.opponent = cfg.opponentId;
-    SaveManager.data.profile.aiStyle = cfg.aiStyle;
-    SaveManager.data.profile.aiDiff = cfg.aiDiff;
-    SaveManager.save();
-    this.rebuildFighters();
-    this.ai = new OpponentAI(this.opponent, cfg.aiStyle, cfg.aiDiff);
-
-    document.getElementById('menu').style.display = 'none';
-    this.hud.show();
-    this.hud.setFighters(this.player, this.opponent);
-
-    this.player.resetFightState(new V3(0,0,-1.05), 0);
-    this.opponent.resetFightState(new V3(0,0, 1.05), Math.PI);
-    this.ai.reset();
-
-    this.playerRig.setPoseVisible(false);
-    this.oppRig.setPoseVisible(false);
-    this.setTrailsVisible(false);
-    this.camera.mode = 0;
-
-    if (this.isTouchDevice()) document.getElementById('touch').classList.add('on');
-
-    this.hud.showAnnounce('РАУНД 1', 'БОКС', 2000);
-    if (this.audio) this.audio.gong();
-
-    setTimeout(() => {
-      this.state = 'fighting';
-      this.hud.hideAnnounce();
-    }, 2200);
-  }
-
-  isTouchDevice(){
-    return ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
-  }
-
-  setTrailsVisible(v){
-    const all = [...this.playerRig.trailDotsL, ...this.playerRig.trailDotsR,
-                 ...this.oppRig.trailDotsL, ...this.oppRig.trailDotsR];
-    for (const d of all){ if (!v) d.mesh.isVisible = false; }
-  }
-
-  endRound(){
-    if (this.state !== 'fighting') return;
-    this.state = 'roundEnd';
-    // Прекращаем атаки
-    this.player.punch = null;
-    this.opponent.punch = null;
-    this.input.punchQueue.length = 0;
-    if (this.audio) this.audio.gong();
-    this.hud.showAnnounce('КОНЕЦ РАУНДА', 'РАУНД ' + this.round, 2200);
-
-    // Подсчёт очков раунда
-    const pL = this.player.stats.landed, oL = this.opponent.stats.landed;
-    const pEff = this.player.stats.thrown ? pL/Math.max(1,this.player.stats.thrown) : 0;
-    const oEff = this.opponent.stats.thrown ? oL/Math.max(1,this.opponent.stats.thrown) : 0;
-    let pScore = pL*1.0 + this.player.stats.blockedIncoming*0.30 + pEff*3.0;
-    let oScore = oL*1.0 + this.opponent.stats.blockedIncoming*0.30 + oEff*3.0;
-    pScore *= (0.6 + 0.4*this.player.health);
-    oScore *= (0.6 + 0.4*this.opponent.health);
-    this.roundScores.push({p:pScore, o:oScore});
-    if (pScore > oScore + 0.5) this.scores[0]++;
-    else if (oScore > pScore + 0.5) this.scores[1]++;
-
-    setTimeout(() => {
-      if (this.round >= this.rounds || this.player.health <= 0.02 || this.opponent.health <= 0.02){
-        this.endFight();
-      } else {
-        this.state = 'break';
-        this.round++;
-        this.timeLeft = this.roundTime;
-        this.player.stats = { thrown:0, landed:0, missed:0, blocked:0, damageDealt:0, damageTaken:0, blockedIncoming:0 };
-        this.opponent.stats = { thrown:0, landed:0, missed:0, blocked:0, damageDealt:0, damageTaken:0, blockedIncoming:0 };
-        this.hud.showAnnounce('ПЕРЕРЫВ', 'СЛЕДУЮЩИЙ РАУНД ' + this.round, 3000);
-        setTimeout(() => {
-          this.state = 'fighting';
-          this.hud.hideAnnounce();
-          if (this.audio) this.audio.gong();
-        }, 3400);
-      }
-    }, 2400);
-  }
-
-  endFight(){
-    this.state = 'fightEnd';
-    const pHp = this.player.health, oHp = this.opponent.health;
-    let title, reason;
-    if (this.player.health <= 0.02 && this.opponent.health > 0.02){
-      title = this.opponent.def.name + ' ПОБЕДИЛ'; reason = 'ТЕХНИЧЕСКИЙ НОКАУТ';
-    } else if (this.opponent.health <= 0.02 && this.player.health > 0.02){
-      title = this.player.def.name + ' ПОБЕДИЛ'; reason = 'ТЕХНИЧЕСКИЙ НОКАУТ';
-    } else if (this.scores[0] > this.scores[1]){
-      title = this.player.def.name + ' ПОБЕДИЛ'; reason = 'РЕШЕНИЕ СУДЕЙ';
-    } else if (this.scores[1] > this.scores[0]){
-      title = this.opponent.def.name + ' ПОБЕДИЛ'; reason = 'РЕШЕНИЕ СУДЕЙ';
-    } else {
-      title = 'НИЧЬЯ'; reason = 'РАВНЫЙ БОЙ';
-    }
-
-    const pEff = this.player.stats.thrown ? Math.round(this.player.stats.landed/Math.max(1,this.player.stats.thrown)*100) : 0;
-    const oEff = this.opponent.stats.thrown ? Math.round(this.opponent.stats.landed/Math.max(1,this.opponent.stats.thrown)*100) : 0;
-
-    // Сохранение статистики
-    const st = SaveManager.data.stats;
-    st.fights++;
-    if (title.includes(this.player.def.name)) st.wins++;
-    else if (title.includes(this.opponent.def.name)) st.losses++;
-    else st.draws++;
-    st.thrown += this.player.stats.thrown;
-    st.landed += this.player.stats.landed;
-    st.history.push({
-      date: new Date().toLocaleDateString('ru-RU'),
-      player: this.player.def.name, opp: this.opponent.def.name,
-      result: title.includes(this.player.def.name) ? 'ПОБЕДА' : (title.includes('НИЧЬЯ') ? 'НИЧЬЯ' : 'ПОРАЖЕНИЕ'),
-      score: this.scores[0] + ':' + this.scores[1]
-    });
-    if (st.history.length > 40) st.history.shift();
-    SaveManager.save();
-
-    if (this.audio) this.audio.gong();
-
-    setTimeout(() => {
-      this.state = 'menu';
-      document.getElementById('menu').style.display = 'flex';
-      document.getElementById('touch').classList.remove('on');
-      this.hud.hide();
-      MenuUI.showResult({
-        title, reason,
-        playerName: this.player.def.name,
-        scoreP: this.scores[0], scoreO: this.scores[1],
-        landedP: this.player.stats.landed, landedO: this.opponent.stats.landed,
-        thrownP: this.player.stats.thrown, thrownO: this.opponent.stats.thrown,
-        effP: pEff, effO: oEff,
-        blockP: this.player.stats.blocked, blockO: this.opponent.stats.blocked
-      });
-      this.startMenuIdle();
-    }, 2600);
-  }
-
-  returnToMenu(){
-    document.getElementById('menu').style.display = 'flex';
-    document.getElementById('touch').classList.remove('on');
-    this.hud.hide();
-    MenuUI.show('menuMain');
-    this.startMenuIdle();
-  }
-
-  /* ---------- Игровой цикл ---------- */
-  renderLoop(){
-    const now = performance.now();
-    let dtRaw = (now - (this.lastT || now)) / 1000;
-    this.lastT = now;
-    if (dtRaw > 0.25) dtRaw = 0.25;
-    if (dtRaw <= 0) dtRaw = 1/60;
-
-    // FPS
-    const fps = 1/dtRaw;
-    this.fpsSmoothed = this.fpsSmoothed*0.90 + fps*0.10;
-
-    // Ввод
-    this.input.pollGamepad(dtRaw);
-    const playerInput = this.gatherInput();
-
-    // Замедление времени в тренировке
-    const timeScale = (this.state === 'training') ? (this.trainingOpts ? this.trainingOpts.slow : 1) : 1;
-
-    // Фиксированный шаг физики
-    this.fixedAccum += dtRaw * timeScale;
-    const step = CFG.gravityStep;
-    let steps = 0;
-    while (this.fixedAccum >= step && steps < 8){
-      this.fixedUpdate(step);
-      this.fixedAccum -= step;
-      steps++;
-    }
-    if (steps === 0){
-      // Всё равно обновим позы для плавности
-      this.updatePoses(dtRaw*timeScale);
-    }
-
-    // Камера и арена
-    if (this.camera) this.camera.update(dtRaw, this.player, this.opponent);
-    if (this.ring) this.ring.update(dtRaw);
-
-    // HUD
-    if (this.state === 'fighting' || this.state === 'break' || this.state === 'roundEnd' || this.state === 'training'){
-      this.hud.update(this.player, this.opponent);
-    } else if (this.state === 'menu'){
-      // мягкое обновление здоровья в меню (для превью)
-    }
-
-    // Таймер
-    if (this.state === 'fighting'){
-      this.timeLeft -= dtRaw;
-      if (this.timeLeft <= 0){
-        this.timeLeft = 0;
-        this.endRound();
-      }
-      // Нокаут
-      if (this.player.health <= 0.02 || this.opponent.health <= 0.02){
-        this.endRound();
-      }
-    }
-
-    // Проверка окончания тренировки
-    if (this.state === 'training' && this.input.justPressed.has(SaveManager.data.keys.pause)){
-      this.returnToMenu();
-    }
-    // Пауза в бою
-    if (this.state === 'fighting' && this.input.justPressed.has(SaveManager.data.keys.pause)){
-      this.hud.toast('Пауза недоступна в бою — завершите раунд');
-    }
-
-    // Переключение камеры
-    if (this.input.justPressed.has('KeyV')){
-      this.camera.setMode(this.camera.mode+1);
-    }
-
-    // Скрыть/показать мини-статистику
-    if (this.input.justPressed.has('KeyB')){
-      const s = SaveManager.data.settings;
-      s.showMiniStats = !s.showMiniStats;
-      SaveManager.save();
-    }
-
-    this.input.endFrame();
-    this.frame++;
-  }
-
-  gatherInput(){
-    if (this.state === 'menu'){
-      return { move:new V3(0,0,0), punch:null, blockL:false, blockR:false, blockBody:false, blockAll:false, dodge:null, sprint:false, punchQueue:this.input.punchQueue };
-    }
-    if (this.state === 'training'){
-      const inp = this.input.gather(this.player);
-      // В тренировке соперник не атакует
-      return inp;
-    }
-    if (this.state !== 'fighting'){
-      // Блокируем ввод в перерывах
-      this.input.punchQueue.length = 0;
-      return { move:new V3(0,0,0), punch:null, blockL:false, blockR:false, blockBody:false, blockAll:false, dodge:null, sprint:false, punchQueue:[] };
-    }
-    return this.input.gather(this.player);
-  }
-
-  fixedUpdate(dt){
-    const playerInput = this._pendingInput || this.gatherInput();
-    this._pendingInput = null;
-
-    if (this.state === 'menu'){
-      // Idle-анимация: боксёр слегка двигается в стойке
-      this.player.moveInput.set(0,0,0);
-      this.player.velocity.set(0,0,0);
-      this.player.breathPhase += dt*1.8;
-      this.player.microPhase += dt*0.9;
-      // Лёгкое покачивание
-      const t = performance.now()*0.0006;
-      this.player.position.x = Math.sin(t)*0.05;
-      this.player.position.z = -0.85 + Math.cos(t*0.7)*0.04;
-      this.player.yaw = 0;
-      this.player.update(dt, { move:new V3(0,0,0), punch:null, blockL:false, blockR:false, blockBody:false, blockAll:false, dodge:null, sprint:false, punchQueue:[] }, this.opponent);
-
-      // Соперник в меню
-      this.opponent.update(dt, { move:new V3(0,0,0), punch:null, blockL:false, blockR:false, blockBody:false, blockAll:false, dodge:null, sprint:false, punchQueue:[] }, this.player);
-      return;
-    }
-
-    if (this.state === 'training'){
-      const inp = this.input.gather(this.player);
-      this.player.update(dt, inp, this.opponent);
-      // Манекен
-      const dummyInput = { move:new V3(0,0,0), punch:null, blockL:false, blockR:false, blockBody:false, blockAll:false, dodge:null, sprint:false, punchQueue:[] };
-      if (this.trainingOpts && this.trainingOpts.dummyMove){
-        const t = performance.now()*0.0005;
-        dummyInput.move.set(Math.sin(t*0.7)*0.45, 0, Math.cos(t*0.5)*0.25);
-        if (Math.random() < 0.006) dummyInput.punch = 'jab';
-      }
-      this.opponent.update(dt, dummyInput, this.player);
-      return;
-    }
-
-    if (this.state === 'fighting'){
-      const inp = this.input.gather(this.player);
-      const aiInp = this.ai.update(dt, this.player);
-      this.player.update(dt, inp, this.opponent);
-      this.opponent.update(dt, aiInp, this.player);
-
-      // Разделение тел (нельзя стоять внутри друг друга)
-      const dx = this.opponent.position.x - this.player.position.x;
-      const dz = this.opponent.position.z - this.player.position.z;
-      const d = Math.hypot(dx, dz);
-      const minD = 0.68;
-      if (d < minD && d > 0.001){
-        const push = (minD - d) * 0.5;
-        const nx = dx/d, nz = dz/d;
-        this.player.position.x -= nx*push;
-        this.player.position.z -= nz*push;
-        this.opponent.position.x += nx*push;
-        this.opponent.position.z += nz*push;
-      }
-      return;
-    }
-
-    if (this.state === 'break' || this.state === 'roundEnd' || this.state === 'intro'){
-      const idle = { move:new V3(0,0,0), punch:null, blockL:false, blockR:false, blockBody:false, blockAll:false, dodge:null, sprint:false, punchQueue:[] };
-      this.player.update(dt, idle, this.opponent);
-      this.opponent.update(dt, idle, this.player);
-      // Медленно разводим бойцов
-      if (this.state === 'intro' || this.state === 'roundEnd'){
-        const dx = this.opponent.position.x - this.player.position.x;
-        const dz = this.opponent.position.z - this.player.position.z;
-        const d = Math.hypot(dx, dz);
-        if (d < 1.9 && d > 0.001){
-          const nx = dx/d, nz = dz/d;
-          this.player.position.x -= nx*dt*0.55;
-          this.player.position.z -= nz*dt*0.55;
-          this.opponent.position.x += nx*dt*0.55;
-          this.opponent.position.z += nz*dt*0.55;
-        }
-      }
-      return;
-    }
-  }
-
-  updatePoses(dt){ /* позы применяются внутри FighterController.update */ }
-}
-
-/* ======================= Инициализация ======================= */
-const Game_ = new GameManager();
-window.addEventListener('load', () => {
-  Game_.boot().catch(err => {
-    console.error(err);
-    document.getElementById('fatal').classList.add('show');
-    document.getElementById('fatalMsg').textContent = 'Ошибка при запуске: ' + (err && err.message ? err.message : err);
-    document.getElementById('loader').classList.add('hidden');
-  });
-});
-
-// Экспорт в глобальную область для доступа из обработчиков
-window.Game = Game_;
-window.Ring = { instance: null };
-
-/* ======================= Проверки и диагностика ======================= */
-(function diagnostics(){
-  // Проверка наличия ключевых DOM-элементов
-  const required = ['renderCanvas','hud','menu','touch','toast','loader','fatal'];
-  const missing = required.filter(id => !document.getElementById(id));
-  if (missing.length){
-    console.warn('[APEX RING] Отсутствуют элементы:', missing.join(', '));
-  }
-  // Информация о WebGL
-  try {
-    const c = document.createElement('canvas');
-    const gl2 = c.getContext('webgl2');
-    const gl1 = c.getContext('webgl') || c.getContext('experimental-webgl');
-    console.log('[APEX RING] WebGL2:', !!gl2, '| WebGL1:', !!gl1);
-    if (!gl2 && !gl1) console.warn('[APEX RING] WebGL недоступен');
-  } catch(e){}
-  // Проверка LocalStorage
-  try {
-    localStorage.setItem('__apex_test', '1');
-    localStorage.removeItem('__apex_test');
-  } catch(e){
-    console.warn('[APEX RING] LocalStorage недоступен — настройки не сохранятся');
-  }
-  // Проверка Gamepad API
-  console.log('[APEX RING] Gamepad API:', !!navigator.getGamepads);
-  // Проверка Pointer Events
-  console.log('[APEX RING] Pointer Events:', 'PointerEvent' in window);
-  console.log('[APEX RING] Проект запущен. Все системы в одном файле.');
-})();
-</script>
+    </script>
 </body>
 </html>
