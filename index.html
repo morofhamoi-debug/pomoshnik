@@ -337,7 +337,6 @@
     <script>
         /**
          * AUDIO SYNTHESIZER (Web Audio API)
-         * Generates pleasant, latency-free, low-footprint sound synthesis without external MP3 assets.
          */
         class SoundEngine {
             constructor() {
@@ -375,7 +374,6 @@
 
                     osc.type = isPaddle ? 'sine' : 'triangle';
                     
-                    // Higher pitch for paddle hit, lower soft thud for wall
                     const startFreq = isPaddle ? 440 : 220;
                     const endFreq = isPaddle ? 880 : 110;
 
@@ -391,7 +389,7 @@
                     osc.start();
                     osc.stop(this.ctx.currentTime + 0.08);
                 } catch (e) {
-                    // Ignore audio playback exceptions safely
+                    // Ignore sound errors
                 }
             }
 
@@ -416,36 +414,54 @@
                     osc.start();
                     osc.stop(this.ctx.currentTime + 0.35);
                 } catch (e) {
-                    // Ignore audio errors
+                    // Ignore sound errors
                 }
             }
         }
 
         /**
-         * HAPTIC FEEDBACK SYSTEM
-         * NOTE ON iOS SAFARI HAPTIC LIMITATIONS:
-         * Standard Apple Mobile Safari strictly restricts tactile/haptic vibrations via JavaScript inside ordinary web pages.
-         * The standard `navigator.vibrate()` API is disabled on iOS Safari.
-         * Advanced Haptics (UIFeedbackGenerator) are ONLY exposed inside WebViews (WkWebView) or PWAs installed to Home Screen on specific iOS versions.
-         * To ensure robust, failure-proof execution without throwing errors:
-         * 1. We test for standard `navigator.vibrate`.
-         * 2. We provide fallback visual feedback (paddle glow flash and micro particle pulse) on every hit.
-         * 3. We trigger synchronized audio synth sound FX to provide rich sensory feedback.
+         * ENHANCED HAPTICS SYSTEM
+         * Direct multi-level fallback for iOS Taptic Engine triggering
          */
         class HapticEngine {
+            constructor(audioEngine) {
+                this.audioEngine = audioEngine;
+            }
+
             triggerHit() {
+                // Standard Vibrate API (Android / Supported Browsers)
                 if ('vibrate' in navigator && typeof navigator.vibrate === 'function') {
                     try {
-                        navigator.vibrate(12);
-                    } catch (e) {
-                        // Silent catch if browser restricts vibration invocation
-                    }
+                        navigator.vibrate([15]);
+                    } catch (e) {}
+                }
+
+                // Low-frequency Sub-bass Pulse (Triggers Taptic Engine tactile feel via speakers/haptics on iOS)
+                if (this.audioEngine && this.audioEngine.ctx) {
+                    try {
+                        const ctx = this.audioEngine.ctx;
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(60, ctx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(10, ctx.currentTime + 0.04);
+                        
+                        gain.gain.setValueAtTime(0.8, ctx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.04);
+                        
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        
+                        osc.start();
+                        osc.stop(ctx.currentTime + 0.04);
+                    } catch (e) {}
                 }
             }
         }
 
         /**
-         * PARTICLE visual effects system for hit dynamic illumination
+         * PARTICLE SYSTEM
          */
         class ParticleSystem {
             constructor() {
@@ -511,7 +527,7 @@
 
                 // Audio & Haptics
                 this.audio = new SoundEngine();
-                this.haptics = new HapticEngine();
+                this.haptics = new HapticEngine(this.audio);
                 this.particles = new ParticleSystem();
 
                 // UI Elements
@@ -533,7 +549,7 @@
                 this.dpr = 1;
 
                 // Game State variables
-                this.state = 'START'; // 'START', 'PLAYING', 'GAMEOVER'
+                this.state = 'START';
                 this.score = 0;
                 this.highScore = this.loadHighScore();
                 this.lastTime = 0;
@@ -546,7 +562,7 @@
                     vx: 0,
                     vy: 0,
                     radius: 8,
-                    baseSpeed: 400, // Logical pixels per second
+                    baseSpeed: 400,
                     speed: 400,
                     maxSpeed: 850,
                     lastHitTime: 0
@@ -557,7 +573,7 @@
                     y: 0,
                     width: 110,
                     height: 28,
-                    radius: 14, // Pill rounded capsule shape
+                    radius: 14,
                     targetX: 0,
                     flashIntensity: 0
                 };
@@ -575,16 +591,14 @@
                     const saved = localStorage.getItem('dynamic_bounce_highscore');
                     return saved ? parseInt(saved, 10) || 0 : 0;
                 } catch (e) {
-                    return 0; // Fallback if localStorage disabled / restricted
+                    return 0;
                 }
             }
 
             saveHighScore(score) {
                 try {
                     localStorage.setItem('dynamic_bounce_highscore', score.toString());
-                } catch (e) {
-                    // Ignore storage save failures
-                }
+                } catch (e) {}
             }
 
             init() {
@@ -596,7 +610,6 @@
                 this.setupUI();
                 this.resetBallAndPaddle();
 
-                // Start initial background render loop
                 this.lastTime = performance.now();
                 this.animFrameId = requestAnimationFrame((t) => this.loop(t));
             }
@@ -610,11 +623,9 @@
                 this.canvas.height = this.height * this.dpr;
                 this.ctx.scale(this.dpr, this.dpr);
 
-                // Adjust relative paddle y position (safe distance above Home Indicator)
                 const safeBottomPadding = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '20', 10);
                 this.paddle.y = this.height - Math.max(60, safeBottomPadding + 45);
 
-                // Re-clamp paddle position inside canvas bounds
                 this.clampPaddlePosition();
             }
 
@@ -625,7 +636,6 @@
             }
 
             setupInputs() {
-                // Pointer Event listeners handling both Touch and Mouse seamlessly
                 const onPointerMove = (e) => {
                     if (this.state === 'PLAYING') {
                         this.paddle.targetX = e.clientX;
@@ -649,7 +659,6 @@
                 window.addEventListener('pointerup', onPointerUp);
                 window.addEventListener('pointercancel', onPointerUp);
 
-                // Visibility change detection to prevent teleporting ball
                 document.addEventListener('visibilitychange', () => {
                     if (document.hidden && this.state === 'PLAYING') {
                         this.lastTime = performance.now();
@@ -733,34 +742,26 @@
             }
 
             launchBall() {
-                // Launch ball upwards with controlled random angle (-30deg to +30deg)
                 const angle = (Math.random() * 60 - 30) * (Math.PI / 180);
                 this.ball.speed = this.ball.baseSpeed;
                 this.ball.vx = this.ball.speed * Math.sin(angle);
                 this.ball.vy = -this.ball.speed * Math.cos(angle);
             }
 
-            /**
-             * Advanced physics update with delta-time safety step-subdivisions.
-             * Prevents ball tunneling through paddle or walls at high velocities.
-             */
             updatePhysics(dt) {
                 if (this.state !== 'PLAYING') return;
 
-                // Smoothly lerp paddle position towards finger/mouse target
                 const lerpFactor = 0.25;
                 this.paddle.x += (this.paddle.targetX - this.paddle.x) * lerpFactor;
                 this.clampPaddlePosition();
 
-                // Dim hit highlight animation
                 if (this.paddle.flashIntensity > 0) {
                     this.paddle.flashIntensity -= dt * 4;
                     if (this.paddle.flashIntensity < 0) this.paddle.flashIntensity = 0;
                 }
 
-                // Substep collision system to prevent frame-skipping / tunneling
                 const totalMove = Math.hypot(this.ball.vx * dt, this.ball.vy * dt);
-                const maxStep = 4; // Maximum travel distance per sub-step in logical pixels
+                const maxStep = 4;
                 const steps = Math.max(1, Math.ceil(totalMove / maxStep));
                 const subDt = dt / steps;
 
@@ -768,7 +769,6 @@
                     this.ball.x += this.ball.vx * subDt;
                     this.ball.y += this.ball.vy * subDt;
 
-                    // Wall Collision: Left / Right
                     if (this.ball.x - this.ball.radius <= 0) {
                         this.ball.x = this.ball.radius;
                         this.ball.vx = Math.abs(this.ball.vx);
@@ -779,45 +779,34 @@
                         this.audio.playBounce(false);
                     }
 
-                    // Wall Collision: Top
                     if (this.ball.y - this.ball.radius <= 0) {
                         this.ball.y = this.ball.radius;
                         this.ball.vy = Math.abs(this.ball.vy);
                         this.audio.playBounce(false);
                     }
 
-                    // Bottom Boundary: Game Over trigger
                     if (this.ball.y - this.ball.radius > this.height) {
                         this.gameOver();
                         return;
                     }
 
-                    // Paddle Capsule Geometric Intersection Test
                     this.checkPaddleCollision();
                 }
 
-                // Particle Engine updates
                 this.particles.update(dt);
             }
 
-            /**
-             * Capsule geometric intersection test for smooth oval deflection
-             */
             checkPaddleCollision() {
-                // Debounce double hit registration in consecutive sub-steps
                 const now = performance.now();
                 if (now - this.ball.lastHitTime < 100) return;
-
-                // Only detect collision if ball is moving downwards
                 if (this.ball.vy <= 0) return;
 
                 const py = this.paddle.y;
                 const px = this.paddle.x;
                 const pw = this.paddle.width;
                 const ph = this.paddle.height;
-                const halfW = pw / 2 - ph / 2; // Flat inner segment length from center
+                const halfW = pw / 2 - ph / 2;
 
-                // Nearest point on paddle's internal center line segment
                 let nearestX = Math.max(px - halfW, Math.min(px + halfW, this.ball.x));
                 let nearestY = py;
 
@@ -829,22 +818,17 @@
                 if (distance <= minDistance) {
                     this.ball.lastHitTime = now;
 
-                    // Calculate deflection angle based on impact distance from center
-                    const relativeImpact = (this.ball.x - px) / (pw / 2); // -1.0 (left edge) to +1.0 (right edge)
+                    const relativeImpact = (this.ball.x - px) / (pw / 2);
                     const clampedImpact = Math.max(-1, Math.min(1, relativeImpact));
 
-                    // Max deflection angle: 60 degrees from vertical
                     const maxAngle = (60 * Math.PI) / 180;
                     const bounceAngle = clampedImpact * maxAngle;
 
-                    // Progressive speed increase (2.5% increase per bounce up to max limit)
                     this.ball.speed = Math.min(this.ball.maxSpeed, this.ball.speed * 1.025);
 
-                    // Recalculate velocity vectors
                     this.ball.vx = this.ball.speed * Math.sin(bounceAngle);
                     this.ball.vy = -this.ball.speed * Math.cos(bounceAngle);
 
-                    // Separate ball outside collision zone
                     const overlap = minDistance - distance;
                     if (distance > 0) {
                         this.ball.x += (distX / distance) * (overlap + 1);
@@ -853,12 +837,10 @@
                         this.ball.y = py - (ph / 2) - this.ball.radius - 1;
                     }
 
-                    // Score increment & visual effects
                     this.score += 1;
                     this.hudScore.textContent = this.score.toString();
                     this.paddle.flashIntensity = 1.0;
 
-                    // Trigger Audio, Haptics & Particle burst
                     this.audio.playBounce(true);
                     this.haptics.triggerHit();
                     this.particles.spawnHitBurst(this.ball.x, this.ball.y + this.ball.radius, '#FFFFFF');
@@ -868,13 +850,9 @@
             render() {
                 this.ctx.clearRect(0, 0, this.width, this.height);
 
-                // Render Particles
                 this.particles.draw(this.ctx);
-
-                // Render Paddle (Dynamic Island Capsule Style)
                 this.drawPaddle();
 
-                // Render Ball
                 if (this.state === 'PLAYING') {
                     this.drawBall();
                 }
@@ -888,22 +866,18 @@
 
                 this.ctx.save();
 
-                // Outer ambient glow
                 this.ctx.shadowColor = 'rgba(255, 255, 255, ' + (0.15 + p.flashIntensity * 0.5) + ')';
                 this.ctx.shadowBlur = 15 + p.flashIntensity * 20;
 
-                // Base Dynamic Island Capsule body
                 this.ctx.fillStyle = p.flashIntensity > 0 ? '#FFFFFF' : '#0F1015';
                 this.ctx.beginPath();
                 this.ctx.roundRect(x, y, p.width, p.height, radius);
                 this.ctx.fill();
 
-                // Inner contrast border
                 this.ctx.lineWidth = 1.5;
                 this.ctx.strokeStyle = `rgba(255, 255, 255, ${0.2 + p.flashIntensity * 0.6})`;
                 this.ctx.stroke();
 
-                // Subtle top glass specularity reflection
                 const reflectGrad = this.ctx.createLinearGradient(x, y, x, y + p.height / 2);
                 reflectGrad.addColorStop(0, 'rgba(255, 255, 255, 0.25)');
                 reflectGrad.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
@@ -921,11 +895,9 @@
 
                 this.ctx.save();
 
-                // Ball Outer Glow
                 this.ctx.shadowColor = 'rgba(255, 255, 255, 0.6)';
                 this.ctx.shadowBlur = 12;
 
-                // 3D Volume Gradient
                 const grad = this.ctx.createRadialGradient(
                     b.x - b.radius * 0.3,
                     b.y - b.radius * 0.3,
@@ -950,7 +922,6 @@
                 let dt = (timestamp - this.lastTime) / 1000;
                 this.lastTime = timestamp;
 
-                // Clamp delta time to max 0.033s (30fps equivalent) to prevent massive physical skips on tab return
                 if (dt > 0.033) dt = 0.033;
 
                 this.updatePhysics(dt);
@@ -960,7 +931,6 @@
             }
         }
 
-        // Initialize Game once DOM content is ready
         window.addEventListener('DOMContentLoaded', () => {
             window.gameInstance = new GameEngine();
         });
